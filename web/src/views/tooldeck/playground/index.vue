@@ -1,7 +1,7 @@
 <template>
   <div
-    ><header
-      ><div><h1>在线调试</h1><p>写一段代码，立即验证想法。无需创建项目或上传 ZIP。</p></div
+    ><header class="tooldeck-page-hero"
+      ><div><span class="page-eyebrow">ONLINE PLAYGROUND</span><h1>在线调试</h1><p>写一段代码，立即验证想法。无需创建项目或上传 ZIP。</p></div
       ><ElButton type="primary" size="large" :loading="busy" @click="runCode">▶ 运行代码</ElButton></header
     ><div class="toolbar"
       ><ElSelect v-model="language" :disabled="busy" @change="changeLanguage" style="width: 170px"><ElOption v-for="(label, key) in languages" :key="key" :value="key" :label="label" /></ElSelect><ElSelect v-model="version" :disabled="busy" style="width: 140px"><ElOption v-for="v in versions" :key="v" :value="v" :label="v" /></ElSelect><ElButton :disabled="busy" @click="example">载入示例</ElButton><ElButton @click="download">下载代码</ElButton><ElButton v-if="busy" type="danger" plain @click="stop">{{ activeRun ? '停止运行' : '停止等待' }}</ElButton

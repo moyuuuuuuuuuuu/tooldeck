@@ -1,6 +1,6 @@
 <template>
   <div class="api-guide">
-    <header v-if="!embedded"><span class="eyebrow">TOOLDECK API</span><h1>API 调用指南</h1><p>完成工具发现、任务提交、异步状态查询和文件产物下载的通用接入说明。</p><ElButton type="primary" @click="router.push('/tooldeck/credentials')">管理 API Key</ElButton></header>
+    <header v-if="!embedded" class="tooldeck-page-hero"><div><span class="eyebrow">TOOLDECK API</span><h1>API 调用指南</h1><p>完成工具发现、任务提交、异步状态查询和文件产物下载的通用接入说明。</p></div><ElButton type="primary" @click="router.push('/tooldeck/credentials')">管理 API Key</ElButton></header>
     <main>
       <aside
         ><span class="nav-label">API 接入</span
@@ -78,12 +78,11 @@
     margin: auto;
   }
   .api-guide > header {
-    position: relative;
-    padding: 34px 36px;
-    margin-bottom: 28px;
+    padding: 32px;
+    margin-bottom: 30px;
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 20px;
-    background: linear-gradient(120deg, var(--el-color-primary-light-9), var(--el-bg-color) 70%);
+    background: linear-gradient(115deg, var(--el-color-primary-light-9), var(--el-bg-color) 65%, var(--el-color-success-light-9));
   }
   .eyebrow {
     font-size: 11px;
@@ -101,10 +100,8 @@
     line-height: 1.8;
   }
   header .el-button {
-    position: absolute;
-    right: 36px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
+    transform: none;
   }
   main {
     display: grid;

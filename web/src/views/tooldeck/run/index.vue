@@ -30,7 +30,7 @@
           ><ElEmpty v-if="!result" description="填写左侧参数并运行，结果将在这里显示" /><RunResult v-else :run="result" @update="result = $event"
         /></section>
       </main>
-      <ElDrawer v-model="detailOpen" :title="tool.manifest.title || tool.manifest.name" size="min(680px, 94vw)" destroy-on-close
+      <ElDrawer v-model="detailOpen" :title="tool.manifest.title || tool.manifest.name" size="min(680px, 94vw)" :modal="false" modal-class="tool-detail-overlay" destroy-on-close
         ><ElTabs v-model="detailTab"
           ><ElTabPane v-if="user.isLogin && tool.manifest.env?.length" label="运行环境变量" name="env"><ElAlert :title="owner ? '个人配置与共享给使用者的配置分别保存；其他用户的个人值不会向作者或管理员展示。' : '这里保存的是你在此工具中的个人配置，与作者、管理员及其他用户完全隔离；保存后网页运行和你的 API 调用都会自动使用。'" type="warning" :closable="false" style="margin-bottom: 18px" /><ToolEnvironment :tool-id="tool.id" /></ElTabPane
           ><ElTabPane v-if="user.isLogin && tool.api_enabled !== false" label="API 参数" name="api"
@@ -341,5 +341,15 @@
       padding: 18px;
       border-radius: 14px;
     }
+  }
+</style>
+
+<style>
+  .tool-detail-overlay {
+    background: transparent !important;
+    pointer-events: none;
+  }
+  .tool-detail-overlay .el-drawer {
+    pointer-events: auto;
   }
 </style>

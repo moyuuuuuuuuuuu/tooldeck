@@ -1,6 +1,6 @@
 <template>
   <div
-    ><h1>访问凭证</h1><p class="intro">创建和管理 API Key，在其他应用中调用工具。调用结果与使用次数会同步到你的账号。</p
+    ><header class="tooldeck-page-hero"><div><span class="page-eyebrow">ACCESS CREDENTIALS</span><h1>访问凭证</h1><p class="intro">创建和管理 API Key，在其他应用中调用工具。调用结果与使用次数会同步到你的账号。</p></div></header
     ><ElTabs
       ><ElTabPane label="API Key"
         ><ElButton type="primary" @click="keyOpen = true">创建 API Key</ElButton

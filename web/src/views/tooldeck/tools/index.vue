@@ -1,6 +1,6 @@
 <template>
   <div class="tool-page">
-    <header
+    <header class="tooldeck-page-hero"
       ><div><span class="eyebrow">YOUR PERSONAL TOOLKIT</span><h1>找到工具，让想法即刻发生</h1><p>选择合适的工具，填写参数或上传素材，即刻获得结果。</p></div
       ><div v-if="useUserStore().isLogin" class="actions"><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发文档</ElButton><ElButton type="primary" size="large" @click="uploadOpen = true">＋ 上传工具包</ElButton></div></header
     >
@@ -308,7 +308,7 @@
   .tool-page > header {
     padding: 32px;
     border-radius: 20px;
-    background: linear-gradient(115deg, #edf0ff, #f6f8ff 65%, #eaf7f4);
+    background: linear-gradient(115deg, var(--el-color-primary-light-9), var(--el-bg-color) 65%, var(--el-color-success-light-9));
     border: 1px solid #e4e9f6;
   }
   .tool-page > header h1 {

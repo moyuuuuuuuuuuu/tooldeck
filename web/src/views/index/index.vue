@@ -122,6 +122,51 @@
   }
 </style>
 
+<style>
+  .site-content .tooldeck-page-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 32px;
+    margin-bottom: 30px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 20px;
+    background: linear-gradient(115deg, var(--el-color-primary-light-9), var(--el-bg-color) 65%, var(--el-color-success-light-9));
+  }
+  .site-content .tooldeck-page-hero h1 {
+    margin: 8px 0;
+    font-size: 30px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.7px;
+  }
+  .site-content .tooldeck-page-hero p {
+    max-width: 760px;
+    margin: 0;
+    color: var(--el-text-color-secondary);
+    line-height: 1.8;
+  }
+  .site-content .page-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    color: var(--el-color-primary);
+  }
+  @media (max-width: 700px) {
+    .site-content .tooldeck-page-hero {
+      align-items: flex-start;
+      flex-direction: column;
+      padding: 24px 20px;
+    }
+    .site-content .tooldeck-page-hero h1 {
+      font-size: 26px;
+    }
+  }
+</style>
+
 <style scoped>
   .site-header {
     gap: 30px;

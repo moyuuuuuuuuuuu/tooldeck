@@ -3,7 +3,7 @@
     ><ElTabs v-model="activeTab" class="document-tabs"
       ><ElTabPane label="工具开发指引" name="development"
         ><div class="tab-content"
-          ><header
+          ><header class="tooldeck-page-hero"
       ><div><span class="eyebrow">TOOL DEVELOPMENT GUIDE</span><h1>工具开发指引</h1><p>从第一个代码包开始，接入表单、文件与第三方服务。</p></div
       ><ElButton type="primary" @click="$router.push('/tooldeck/tools')">前往上传工具包</ElButton></header
     ><div class="runtime-strip"><span>支持的运行环境</span><b>PHP 8.0–8.3</b><b>Node / JS 20–23</b><b>Python 3.10–3.12</b><b>Go 1.22–1.24</b></div
