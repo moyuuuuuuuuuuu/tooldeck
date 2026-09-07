@@ -131,7 +131,7 @@
     display: flex;
     gap: 12px;
     padding: 10px 12px;
-    margin-left: -12px;
+    margin-left: 0;
     border-radius: 8px;
     color: var(--el-text-color-secondary);
     text-decoration: none;
@@ -139,8 +139,8 @@
     transition: background 0.15s;
   }
   aside a:hover {
-    color: #5269ef;
-    background: #eef2ff;
+    color: var(--el-color-primary);
+    background: var(--el-color-primary-light-9);
   }
   aside small {
     color: #98a1b6;

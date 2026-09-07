@@ -175,8 +175,8 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
   }
   .runtime-strip b {
     font-weight: 500;
-    background: #f1f4ff;
-    color: #536398;
+    background: var(--el-fill-color-light);
+    color: var(--el-color-primary);
     padding: 4px 12px;
     border-radius: 6px;
   }
@@ -193,11 +193,11 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 10px;
     text-decoration: none;
-    color: #5269ef;
-    background: #f8f9ff;
+    color: var(--el-color-primary);
+    background: var(--el-fill-color-light);
   }
   .template-downloads a:hover {
-    border-color: #9caaee;
+    border-color: var(--el-color-primary-light-5);
   }
   .template-downloads b {
     font-size: 13px;
@@ -227,7 +227,7 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     display: flex;
     gap: 12px;
     padding: 10px 12px;
-    margin-left: -12px;
+    margin-left: 0;
     text-decoration: none;
     color: var(--el-text-color-secondary);
     font-size: 13px;
@@ -235,8 +235,8 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     transition: background 0.15s;
   }
   aside a:hover {
-    background: #eef2ff;
-    color: #5269ef;
+    background: var(--el-color-primary-light-9);
+    color: var(--el-color-primary);
   }
   aside small {
     color: #98a1b6;
@@ -277,9 +277,9 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     font-size: 14px;
   }
   pre {
-    background: #f7f8fc;
-    border: 1px solid #e9edf5;
-    color: #33415f;
+    background: var(--el-fill-color-light);
+    border: 1px solid var(--el-border-color-lighter);
+    color: var(--el-text-color-primary);
     padding: 20px 24px;
     border-radius: 10px;
     white-space: pre-wrap;
