@@ -155,7 +155,35 @@ QQ SMTP 默认使用 `smtp.qq.com:465` 和 TLS，填写：
 
 平台账号、任务、工具和配置存放在 Docker 命名卷 `tooldeck_data`。备份需要同时保存数据卷、主密钥和 BOS 对象；不要执行 `docker compose down -v` 删除数据。切换存储不会自动迁移旧文件，旧文件仍按原元信息读取。
 
-修改 `.env` 后运行 `docker compose up -d --force-recreate`；更新代码运行 `docker compose up -d --build`。
+修改 `.env` 后运行 `docker compose up -d --force-recreate`；更新代码运行 `git pull --ff-only` 后再执行 `docker compose up -d --build`。
+
+### 群晖 NAS 使用 Git 更新
+
+生产源码建议克隆到 `/volume1/docker/tooldeck/repository`，将生产配置保留在外层 `/volume1/docker/tooldeck/.env`，并在源码目录创建 `.env` 软链接。持久化数据仍位于 `/volume1/docker/tooldeck/data`，不会被 Git 更新覆盖。
+
+首次初始化（使用 `moyuu` 身份）：
+
+```bash
+cd /volume1/docker/tooldeck
+/usr/local/bin/git clone --branch main --single-branch https://github.com/moyuuuuuuuuuuu/tooldeck.git repository
+ln -s ../.env repository/.env
+```
+
+后续更新先使用 `moyuu` 身份拉取代码：
+
+```bash
+cd /volume1/docker/tooldeck/repository
+/usr/local/bin/git pull --ff-only
+```
+
+再在 root 终端从源码构建并重建服务：
+
+```bash
+cd /volume1/docker/tooldeck/repository
+/usr/local/bin/docker compose -f deploy/compose.synology.yaml up -d --build
+```
+
+不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
 
 ## 执行隔离与当前边界
 
@@ -201,7 +229,7 @@ npm run build
 
 ### 群晖兼容部署
 
-部分 DSM 内核不支持 CFS CPU 配额、PID 限制或私有 cgroup。显式设置 TOOLDECK_SANDBOX_PROFILE=synology 后，构建与执行固定至 CPU 0，省略 PID 限制及私有 cgroup 参数；不自动降级其他环境。该模式隔离能力较弱，需自行确认接受。示例见 deploy/compose.synology.yaml，复制到 /volume1/docker/tooldeck/compose.yaml 使用；先创建 data 目录，导入 tooldeck:dev 镜像并放置 .env。NAS 主机的 seccomp 是否生效取决于内核支持，不能由配置补足。
+部分 DSM 内核不支持 CFS CPU 配额、PID 限制或私有 cgroup。显式设置 TOOLDECK_SANDBOX_PROFILE=synology 后，构建与执行固定至 CPU 0，省略 PID 限制及私有 cgroup 参数；不自动降级其他环境。该模式隔离能力较弱，需自行确认接受。群晖使用 `deploy/compose.synology.yaml` 从 Git 工作区构建，生产 `.env` 与 `data` 保留在仓库外层。NAS 主机的 seccomp 是否生效取决于内核支持，不能由配置补足。
 
 ## SSE 流式输出
 

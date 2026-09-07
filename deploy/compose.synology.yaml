@@ -1,16 +1,18 @@
 name: tooldeck
 services:
   platform:
+    build:
+      context: ..
     image: tooldeck:dev
     restart: unless-stopped
     ports:
       - "${TOOLDECK_PORT:-18088}:8080"
-    env_file: .env
+    env_file: ../.env
     environment:
       TOOLDECK_HOST_DATA: /volume1/docker/tooldeck/data
       TOOLDECK_SANDBOX_PROFILE: synology
     volumes:
-      - ./data:/data
+      - /volume1/docker/tooldeck/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     mem_limit: 512m
     cpu_shares: 512
