@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -216,6 +217,24 @@ func (s *Server) Handler() http.Handler {
 			}
 			s.store.Unlock()
 			sort.Slice(list, func(i, j int) bool { return list[i].Created.After(list[j].Created) })
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+			if page < 1 {
+				page = 1
+			}
+			if pageSize < 1 || pageSize > 100 {
+				pageSize = 20
+			}
+			total := len(list)
+			start := (page - 1) * pageSize
+			if start > total {
+				start = total
+			}
+			end := min(start+pageSize, total)
+			if r.URL.Query().Has("page") || r.URL.Query().Has("page_size") {
+				jsonResponse(w, 200, map[string]any{"items": list[start:end], "total": total, "page": page, "page_size": pageSize})
+				return
+			}
 			if len(list) > 200 {
 				list = list[:200]
 			}
@@ -492,7 +511,8 @@ func (s *Server) canReadRun(p Principal, r Run) bool {
 }
 func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, id string) {
 	var b struct {
-		Input map[string]any `json:"input"`
+		Input map[string]any    `json:"input"`
+		Env   map[string]string `json:"env"`
 	}
 	if e := decode(w, r, &b); e != nil {
 		fail(w, 400, e)
@@ -500,6 +520,9 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 	}
 	if b.Input == nil {
 		b.Input = map[string]any{}
+	}
+	if b.Env == nil {
+		b.Env = map[string]string{}
 	}
 	s.store.Lock()
 	t, ok := s.store.State.Tools[id]
@@ -518,7 +541,18 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		fail(w, 409, "工具尚未构建成功")
 		return
 	}
-	if _, _, e := s.toolEnvironment(t, p.owner()); e != nil {
+	allowedEnv := map[string]bool{}
+	for _, field := range t.Manifest.Env {
+		allowedEnv[field.Name] = true
+	}
+	for name, value := range b.Env {
+		if !allowedEnv[name] || len(value) > 16384 || strings.ContainsRune(value, 0) {
+			s.store.Unlock()
+			fail(w, 422, "环境变量未声明或值无效")
+			return
+		}
+	}
+	if _, _, e := s.toolEnvironmentWithOverrides(t, p.owner(), b.Env); e != nil {
 		s.store.Unlock()
 		fail(w, 422, e)
 		return
@@ -555,6 +589,23 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			fail(w, 409, "idempotency key was used with a different input")
 			return
 		}
+		storedEnv := map[string]string{}
+		for name, cipher := range s.store.State.RunEnv[run.ID] {
+			value, e := s.decrypt(cipher)
+			if e != nil {
+				s.store.Unlock()
+				fail(w, 500, "运行环境变量解密失败")
+				return
+			}
+			storedEnv[name] = value
+		}
+		a, _ = json.Marshal(storedEnv)
+		bb, _ = json.Marshal(b.Env)
+		if string(a) != string(bb) {
+			s.store.Unlock()
+			fail(w, 409, "idempotency key was used with different environment variables")
+			return
+		}
 	} else {
 		queued := 0
 		for _, x := range s.store.State.Runs {
@@ -567,12 +618,38 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			fail(w, 429, "queue is full")
 			return
 		}
-		run = Run{ID: ID("run_"), ToolID: id, Owner: p.owner(), Status: "queued", Input: b.Input, Artifacts: []File{}, Created: time.Now()}
+		source := "api_key"
+		if p.Session {
+			source = "web"
+		} else if p.Guest {
+			source = "guest"
+		} else if strings.HasPrefix(p.ID, "oauth:") {
+			source = "oauth"
+		}
+		run = Run{ID: ID("run_"), ToolID: id, Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now()}
+		encryptedEnv := map[string]string{}
+		for name, value := range b.Env {
+			cipher, e := s.encrypt(value)
+			if e != nil {
+				s.store.Unlock()
+				fail(w, 500, "运行环境变量加密失败")
+				return
+			}
+			encryptedEnv[name] = cipher
+		}
 		s.store.State.Runs[run.ID] = run
+		if len(encryptedEnv) > 0 {
+			s.store.State.RunEnv[run.ID] = encryptedEnv
+		}
 		if key != "" {
 			s.store.State.Idempotency[index] = run.ID
 		}
 		if e := s.store.save(); e != nil {
+			delete(s.store.State.Runs, run.ID)
+			delete(s.store.State.RunEnv, run.ID)
+			if key != "" {
+				delete(s.store.State.Idempotency, index)
+			}
 			s.store.Unlock()
 			fail(w, 500, e)
 			return

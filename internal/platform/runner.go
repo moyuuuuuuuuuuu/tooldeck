@@ -141,8 +141,19 @@ func (s *Server) execute(parent context.Context, r Run) {
 		redactions = append(redactions, value)
 	}
 	if err == nil {
+		overrides := map[string]string{}
+		for name, cipher := range s.store.State.RunEnv[r.ID] {
+			value, e := s.decrypt(cipher)
+			if e != nil {
+				err = fmt.Errorf("运行环境变量解密失败：%s", name)
+				break
+			}
+			overrides[name] = value
+		}
 		var values, hidden []string
-		values, hidden, err = s.toolEnvironment(tool, r.Owner)
+		if err == nil {
+			values, hidden, err = s.toolEnvironmentWithOverrides(tool, r.Owner, overrides)
+		}
 		env = append(env, values...)
 		redactions = append(redactions, hidden...)
 	}

@@ -106,6 +106,8 @@ type Run struct {
 	ToolID           string         `json:"tool_id"`
 	Owner            string         `json:"owner"`
 	Status           string         `json:"status"`
+	Source           string         `json:"source,omitempty"`
+	EnvOverridden    bool           `json:"env_overridden,omitempty"`
 	Input            map[string]any `json:"input"`
 	Result           any            `json:"result"`
 	Error            string         `json:"error,omitempty"`
@@ -152,6 +154,7 @@ type State struct {
 	Users          map[string]User              `json:"users"`
 	Tools          map[string]Tool              `json:"tools"`
 	Runs           map[string]Run               `json:"runs"`
+	RunEnv         map[string]map[string]string `json:"run_env,omitempty"`
 	Files          map[string]File              `json:"files"`
 	Owners         map[string]string            `json:"owners"`
 	Keys           map[string]Credential        `json:"keys"`
@@ -172,13 +175,16 @@ func OpenStore(root string) (*Store, error) {
 	if err = os.MkdirAll(root, 0700); err != nil {
 		return nil, err
 	}
-	s := &Store{Root: root, State: State{Tools: map[string]Tool{}, Runs: map[string]Run{}, Files: map[string]File{}, Owners: map[string]string{}, Keys: map[string]Credential{}, Secrets: map[string]Secret{}, Idempotency: map[string]string{}, Users: map[string]User{}}}
+	s := &Store{Root: root, State: State{Tools: map[string]Tool{}, Runs: map[string]Run{}, RunEnv: map[string]map[string]string{}, Files: map[string]File{}, Owners: map[string]string{}, Keys: map[string]Credential{}, Secrets: map[string]Secret{}, Idempotency: map[string]string{}, Users: map[string]User{}}}
 	b, err := os.ReadFile(filepath.Join(root, "state.json"))
 	if err == nil {
 		err = json.Unmarshal(b, &s.State)
 	}
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
+	}
+	if s.State.RunEnv == nil {
+		s.State.RunEnv = map[string]map[string]string{}
 	}
 	for id, t := range s.State.Tools {
 		if t.BuildStatus == "building" {

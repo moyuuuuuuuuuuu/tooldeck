@@ -17,11 +17,12 @@ export interface Tool {
     network: {enabled: boolean; allowed_hosts: string[]}; secrets: string[] }
 }
 export interface Artifact { file_id: string; name: string; mime: string; size: number; expires_at?: string; downloads_remaining?: number }
-export interface Run { run_id: string; tool_id: string; status: string; input: Record<string, any>; result: any; error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
+export interface Run { run_id: string; tool_id: string; status: string; source?: 'web'|'api_key'|'oauth'|'guest'; env_overridden?: boolean; input: Record<string, any>; result: any; error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
+export interface RunPage { items: Run[]; total: number; page: number; page_size: number }
 export const toolApiPrefix = () => useUserStore().isLogin ? '/v1' : '/public'
 export const td = {
   tools: () => request.get<Tool[]>({url: `${toolApiPrefix()}/tools`}),
-  runs: () => request.get<Run[]>({url: '/v1/runs?mine=1'}),
+  runs: (page = 1, pageSize = 20) => request.get<RunPage>({url: `/v1/runs?mine=1&page=${page}&page_size=${pageSize}`}),
   run: (id: string) => request.get<Run>({url: `${toolApiPrefix()}/runs/${id}`}),
   execute: (id: string, input: any) => request.post<Run>({url: `${toolApiPrefix()}/tools/${id}/runs`, data: {input}, timeout: 25000, headers: {'Idempotency-Key': Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('')}}),
   cancel: (id: string) => request.post<Run>({url: `${toolApiPrefix()}/runs/${id}/cancel`}),

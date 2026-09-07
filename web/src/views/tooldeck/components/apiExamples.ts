@@ -1,5 +1,5 @@
-export function apiExamples(base: string, toolId: string, input: any) {
- const url=`${base}/api/v1/tools/${toolId}/runs`, body=JSON.stringify({input}), q=JSON.stringify
+export function apiExamples(base: string, toolId: string, input: any, env?: Record<string,string>) {
+ const url=`${base}/api/v1/tools/${toolId}/runs`, body=JSON.stringify(env&&Object.keys(env).length?{input,env}:{input}), q=JSON.stringify
  const php=(v:string)=>"'"+v.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'"
  return {
  PHP:`<?php\n// PHP 8 + cURL；TOOLDECK_API_KEY 通过环境变量配置\n$ch = curl_init(${php(url)});\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_TIMEOUT => 30,\n  CURLOPT_HTTPHEADER => ['X-API-Key: ' . getenv('TOOLDECK_API_KEY'), 'Content-Type: application/json'],\n  CURLOPT_POSTFIELDS => ${php(body)}\n]);\n$response = curl_exec($ch);\nif ($response === false) throw new Exception(curl_error($ch));\n$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);\ncurl_close($ch);\nif ($status >= 400) throw new Exception($response);\necho $response;\n// 若 data.status 为 queued/running，用同一 Key GET /api/v1/runs/{data.run_id} 查询。`,

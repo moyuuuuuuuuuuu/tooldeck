@@ -116,10 +116,12 @@ curl -X POST http://localhost:18088/api/v1/tools/TOOL_ID/runs \
   -H 'X-API-Key: YOUR_API_KEY' \
   -H 'Idempotency-Key: YOUR_UNIQUE_REQUEST_ID' \
   -H 'Content-Type: application/json' \
-  -d '{"input":{"text":"hello"}}'
+  -d '{"input":{"text":"hello"},"env":{"API_KEY":"one-time-value"}}'
 ```
 
-响应包装为 `{"code":200,"data":...,"message":""}`，具体 HTTP 状态表示成功、受理或失败。同步等待最多 20 秒，超时返回 202，任务继续；异步返回 `data.run_id`。重试同一操作使用相同 `Idempotency-Key` 与输入，新操作使用新值。
+`env` 可省略，省略时使用该 Key 所属用户已保存的工具个人配置，并按工具策略回退到作者共享配置。传入 `env` 时只允许工具已声明的变量，且仅覆盖本次运行，优先级高于已保存值；临时值加密保存以支持异步执行，不在响应、运行记录或日志中展示。
+
+响应包装为 `{"code":200,"data":...,"message":""}`，具体 HTTP 状态表示成功、受理或失败。同步等待最多 20 秒，超时返回 202，任务继续；异步返回 `data.run_id`。重试同一操作使用相同 `Idempotency-Key`，并保持 `input` 和 `env` 完全一致；新操作使用新值。
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |

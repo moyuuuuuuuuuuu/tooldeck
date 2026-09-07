@@ -52,6 +52,10 @@ func envKey(t Tool, subject string) string {
 
 // Caller holds the store lock. Values are encrypted even for non-sensitive fields.
 func (s *Server) toolEnvironment(t Tool, owner string) ([]string, []string, error) {
+	return s.toolEnvironmentWithOverrides(t, owner, nil)
+}
+
+func (s *Server) toolEnvironmentWithOverrides(t Tool, owner string, overrides map[string]string) ([]string, []string, error) {
 	personal := t
 	personal.Manifest.EnvMode = "user"
 	values := s.store.State.ToolEnv[envKey(personal, owner)]
@@ -61,19 +65,26 @@ func (s *Server) toolEnvironment(t Tool, owner string) ([]string, []string, erro
 	env := []string{}
 	redactions := []string{}
 	for _, f := range t.Manifest.Env {
-		cipher := values[f.Name]
-		if cipher == "" && t.Manifest.EnvMode != "user" {
-			cipher = defaults[f.Name]
+		v, overridden := overrides[f.Name]
+		cipher := ""
+		if !overridden {
+			cipher = values[f.Name]
+			if cipher == "" && t.Manifest.EnvMode != "user" {
+				cipher = defaults[f.Name]
+			}
 		}
-		if cipher == "" {
+		if !overridden && cipher == "" {
 			if f.Required {
 				return nil, nil, fmt.Errorf("请先配置环境变量 %s", f.Name)
 			}
 			continue
 		}
-		v, e := s.decrypt(cipher)
-		if e != nil {
-			return nil, nil, fmt.Errorf("环境变量解密失败：%s", f.Name)
+		if !overridden {
+			var e error
+			v, e = s.decrypt(cipher)
+			if e != nil {
+				return nil, nil, fmt.Errorf("环境变量解密失败：%s", f.Name)
+			}
 		}
 		if f.Required && v == "" {
 			return nil, nil, fmt.Errorf("请先配置环境变量 %s", f.Name)
