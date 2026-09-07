@@ -97,3 +97,56 @@ func TestPersonalToolOptions(t *testing.T) {
 		t.Fatal("notification read not persisted")
 	}
 }
+
+func TestUploadManifestDefaultsAndExplicitOverrides(t *testing.T) {
+	s := testServer(t)
+	p := Principal{ID: "session", UserID: "alice", Session: true, Tools: []string{"*"}}
+	upload := func(manifest string, fields map[string]string) Tool {
+		var archive bytes.Buffer
+		zw := zip.NewWriter(&archive)
+		file, _ := zw.Create("tooldeck.json")
+		file.Write([]byte(manifest))
+		file, _ = zw.Create("main.py")
+		file.Write([]byte("print('{}')"))
+		zw.Close()
+
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		part, _ := mw.CreateFormFile("file", "tool.zip")
+		part.Write(archive.Bytes())
+		for name, value := range fields {
+			mw.WriteField(name, value)
+		}
+		mw.Close()
+		r := httptest.NewRequest("POST", "/api/v1/tools", &body)
+		r.Header.Set("Content-Type", mw.FormDataContentType())
+		w := httptest.NewRecorder()
+		s.uploadTool(w, r, p)
+		if w.Code != 201 {
+			t.Fatalf("upload failed: %d %s", w.Code, w.Body.String())
+		}
+		var response struct {
+			Data Tool `json:"data"`
+		}
+		json.Unmarshal(w.Body.Bytes(), &response)
+		return response.Data
+	}
+
+	base := strings.Replace(manifestJSON, `"name":"echo"`, `"name":"manifest-defaults"`, 1)
+	base = strings.Replace(base, `"runtime":"python"`, `"runtime":"python","runtime_version":"3.11","build_command":"python -m compileall ."`, 1)
+	base = strings.Replace(base, `"enabled":false,"allowed_hosts":[]`, `"enabled":true,"allowed_hosts":["manifest.example.com"]`, 1)
+	tool := upload(base, nil)
+	if tool.Manifest.RuntimeVersion != "3.11" || tool.Manifest.BuildCommand != "python -m compileall ." || strings.Join(tool.Manifest.Network.AllowedHosts, ",") != "manifest.example.com" {
+		t.Fatalf("manifest values were not preserved: %+v", tool.Manifest)
+	}
+
+	override := strings.Replace(base, `"name":"manifest-defaults"`, `"name":"manifest-overrides"`, 1)
+	tool = upload(override, map[string]string{
+		"runtime_version": "",
+		"build_command":   "",
+		"allowed_hosts":   "author.example.com, cdn.example.com",
+	})
+	if tool.Manifest.RuntimeVersion != "3.12" || tool.Manifest.BuildCommand != "" || strings.Join(tool.Manifest.Network.AllowedHosts, ",") != "author.example.com,cdn.example.com" {
+		t.Fatalf("explicit overrides were not applied: %+v", tool.Manifest)
+	}
+}

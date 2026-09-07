@@ -397,11 +397,11 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		fail(w, 422, "所选环境与代码包 runtime 不一致")
 		return
 	}
-	if version := r.FormValue("runtime_version"); version != "" {
-		m.RuntimeVersion = version
+	if values, present := r.Form["runtime_version"]; present && len(values) > 0 {
+		m.RuntimeVersion = values[0]
 	}
-	if command := r.FormValue("build_command"); command != "" {
-		m.BuildCommand = command
+	if values, present := r.Form["build_command"]; present && len(values) > 0 {
+		m.BuildCommand = values[0]
 	}
 	if value := r.FormValue("stream"); value != "" {
 		if value != "true" && value != "false" {
@@ -435,8 +435,8 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 			}
 		}
 	}
-	if hosts := r.FormValue("allowed_hosts"); hosts != "" {
-		m.Network.AllowedHosts = strings.FieldsFunc(hosts, func(r rune) bool { return r == ',' || r == '\n' || r == ' ' })
+	if values, present := r.Form["allowed_hosts"]; present && len(values) > 0 {
+		m.Network.AllowedHosts = strings.FieldsFunc(values[0], func(r rune) bool { return r == ',' || r == '\n' || r == ' ' })
 	}
 	if notify {
 		m.Execution.Mode = "async"

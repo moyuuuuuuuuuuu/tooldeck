@@ -87,6 +87,7 @@ python scripts/package-examples.py
 ```
 
 在工具库上传 `work/examples/` 下的 ZIP。图片表单示例不调用真实 AI 服务。
+`examples/blank-php`、`blank-js`、`blank-node`、`blank-python`、`blank-go` 提供五种运行时的空白工程模板；PHP 模板使用 Composer PSR-4 自动加载，其余模板也将入口与业务逻辑按语言习惯分离。
 
 详细格式见 [工具包规范](docs/tool-packages.md)，也可查看站内 **开发指引**。
 

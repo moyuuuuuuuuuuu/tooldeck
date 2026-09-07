@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "blank-python",
+  "title": "Python 空白工具模板",
+  "description": "使用应用类、类型标注和明确异常处理的 Python 工具起点。",
+  "version": "1.0.0",
+  "runtime": "py",
+  "runtime_version": "3.12",
+  "entrypoint": "main.py",
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "network": {"enabled": false, "allowed_hosts": []},
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {"text": {"type": "string", "title": "文本内容", "minLength": 1}},
+    "required": ["text"]
+  },
+  "ui_schema": {"text": {"widget": "textarea", "rows": 4, "order": 10}},
+  "output_schema": {"type": "json"}
+}

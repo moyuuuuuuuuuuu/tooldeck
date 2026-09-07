@@ -1,0 +1,18 @@
+{
+  "name": "tooldeck/blank-php",
+  "description": "ToolDeck PHP blank tool template",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "^8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "ToolDeck\\BlankTool\\": "src/"
+    }
+  },
+  "config": {
+    "allow-plugins": false,
+    "sort-packages": true
+  }
+}
