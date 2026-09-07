@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "name": "md5-digest",
+  "title": "MD5 摘要",
+  "description": "计算 UTF-8 文本的 32 位 MD5 摘要；不可解密，不用于密码存储或安全签名。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 10,
+    "memory_mb": 128
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "title": "文本内容",
+        "maxLength": 100000,
+        "default": ""
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "rows": 6
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

@@ -1,13 +1,19 @@
 import type { App } from 'vue'
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import { staticRoutes } from './routes/staticRoutes'
 import { configureNProgress } from '@/utils/router'
 import { setupBeforeEachGuard } from './guards/beforeEach'
 import { setupAfterEachGuard } from './guards/afterEach'
 
+// Preserve bookmarks from the former hash router before history routing starts.
+if (window.location.hash.startsWith('#/')) {
+  const legacy = window.location.hash.slice(1)
+  if (!legacy.startsWith('//')) window.history.replaceState(null, '', legacy)
+}
+
 // 创建路由实例
 export const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes: staticRoutes // 静态路由
 })
 

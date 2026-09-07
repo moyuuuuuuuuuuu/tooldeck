@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "name": "url-codec",
+  "title": "URL 编码 / 解码",
+  "description": "支持 RFC 3986 百分号编码及表单编码。标准模式保留加号，表单模式将加号解码为空格；用于 URL 参数值，不是整条 URL。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 10,
+    "memory_mb": 128
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "title": "操作",
+        "enum": [
+          "编码",
+          "解码"
+        ],
+        "default": "编码"
+      },
+      "mode": {
+        "type": "string",
+        "title": "编码模式",
+        "enum": [
+          "标准编码（空格转 %20）",
+          "表单编码（空格转 +）"
+        ],
+        "default": "标准编码（空格转 %20）"
+      },
+      "text": {
+        "type": "string",
+        "title": "文本 / URL 编码内容",
+        "maxLength": 100000,
+        "default": ""
+      }
+    },
+    "required": [
+      "operation",
+      "mode",
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "rows": 6
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

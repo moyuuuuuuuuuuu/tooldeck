@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "name": "rsa-codec",
+  "title": "RSA 加密 / 解密",
+  "description": "RSA-OAEP（SHA-1/MGF1-SHA-1）短文本加解密，密文使用 Base64。私钥在个人环境变量配置，不填入表单。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 10,
+    "memory_mb": 128
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "env": [
+    {
+      "name": "RSA_PRIVATE_KEY",
+      "description": "PEM 私钥，仅解密时需要；结果与明文会保存在个人运行记录中",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "RSA_PASSPHRASE",
+      "description": "加密私钥的口令（可选）",
+      "required": false,
+      "sensitive": true
+    }
+  ],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "title": "操作",
+        "enum": [
+          "加密",
+          "解密"
+        ],
+        "default": "加密"
+      },
+      "text": {
+        "type": "string",
+        "title": "明文 / Base64 密文",
+        "maxLength": 100000,
+        "default": ""
+      },
+      "public_key": {
+        "type": "string",
+        "title": "PEM 公钥（加密时填写）",
+        "maxLength": 100000,
+        "default": ""
+      }
+    },
+    "required": [
+      "operation",
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "rows": 6
+    },
+    "public_key": {
+      "widget": "textarea",
+      "rows": 6
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

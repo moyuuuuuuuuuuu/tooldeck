@@ -197,3 +197,7 @@ npm run build
 ## 上游与许可
 
 前端基于 [SaiAdmin 6.x](https://github.com/saithink/saiadmin6.x) 的 `saiadmin-artd`，上游提交为 `8f5f6fa57b75c63c5cf370b4f4541e9e529eb306`，未引入其 PHP 后端。保留 [前端许可证](web/LICENSE) 和 [SaiAdmin 许可证](web/LICENSE-SaiAdmin)，使用和分发时请遵守对应许可。
+
+### 群晖兼容部署
+
+部分 DSM 内核不支持 CFS CPU 配额、PID 限制或私有 cgroup。显式设置 TOOLDECK_SANDBOX_PROFILE=synology 后，构建与执行固定至 CPU 0，省略 PID 限制及私有 cgroup 参数；不自动降级其他环境。该模式隔离能力较弱，需自行确认接受。示例见 deploy/compose.synology.yaml，复制到 /volume1/docker/tooldeck/compose.yaml 使用；先创建 data 目录，导入 tooldeck:dev 镜像并放置 .env。NAS 主机的 seccomp 是否生效取决于内核支持，不能由配置补足。

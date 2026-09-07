@@ -1,0 +1,21 @@
+name: tooldeck
+services:
+  platform:
+    image: tooldeck:dev
+    restart: unless-stopped
+    ports:
+      - "${TOOLDECK_PORT:-18088}:8080"
+    env_file: .env
+    environment:
+      TOOLDECK_HOST_DATA: /volume1/docker/tooldeck/data
+      TOOLDECK_SANDBOX_PROFILE: synology
+    volumes:
+      - ./data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 512m
+    cpu_shares: 512
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3

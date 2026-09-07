@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "name": "base64-codec",
+  "title": "Base64 编码 / 解码",
+  "description": "UTF-8 文本与标准 Base64 相互转换；Base64 是编码，不是加密。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 10,
+    "memory_mb": 128
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "title": "操作",
+        "enum": [
+          "编码",
+          "解码"
+        ],
+        "default": "编码"
+      },
+      "text": {
+        "type": "string",
+        "title": "文本或 Base64",
+        "maxLength": 100000,
+        "default": ""
+      }
+    },
+    "required": [
+      "operation",
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "rows": 6
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

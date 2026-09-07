@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "name": "json-formatter",
+  "title": "JSON 格式化",
+  "description": "校验、格式化或压缩 JSON；超大整数保留为字符串，避免精度损失。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 10,
+    "memory_mb": 128
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "title": "操作",
+        "enum": [
+          "格式化",
+          "压缩"
+        ],
+        "default": "格式化"
+      },
+      "text": {
+        "type": "string",
+        "title": "JSON 内容",
+        "maxLength": 100000,
+        "default": ""
+      }
+    },
+    "required": [
+      "operation",
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "rows": 6
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

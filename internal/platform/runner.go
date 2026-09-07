@@ -196,7 +196,7 @@ func (s *Server) execute(parent context.Context, r Run) {
 	} else {
 		args = append(args, runtimeImage, m.Entrypoint)
 	}
-	args = append(args[:1], append(sandboxLimits(), args[1:]...)...)
+	args = sandboxArgs(args)
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Env = append(os.Environ(), env...)
 	b, _ := json.Marshal(input)

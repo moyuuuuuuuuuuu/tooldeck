@@ -177,7 +177,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	defer proxy.Close()
 	name := "tooldeck-build-" + artifact
 	args := []string{"run", "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "256", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--tmpfs", "/build:rw,exec,nosuid,nodev,size=536870912,mode=1777", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=268435456,mode=1777", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "packages", t.ID) + ",dst=/source,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", artifact) + ",dst=/job,readonly", "--env", "HOME=/tmp", "--env", "GOCACHE=/tmp/go-cache", "--env", "GOMODCACHE=/tmp/go-mod", "--entrypoint", "/build.sh", image, t.Manifest.Entrypoint, t.Manifest.BuildCommand}
-	args = append(args[:1], append(sandboxLimits(), args[1:]...)...)
+	args = sandboxArgs(args)
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Stderr = logs
 	pipe, e := cmd.StdoutPipe()
@@ -190,6 +190,15 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		return
 	}
 	unpackErr := extractBuild(pipe, dest)
+	// Drain bounded tar padding before Wait: small host pipes can otherwise block the Docker client.
+	if unpackErr == nil {
+		n, drainErr := io.Copy(io.Discard, io.LimitReader(pipe, 1<<20))
+		if drainErr != nil {
+			unpackErr = drainErr
+		} else if n == 1<<20 {
+			unpackErr = errors.New("excessive trailing build output")
+		}
+	}
 	if unpackErr != nil {
 		cancel()
 	}
