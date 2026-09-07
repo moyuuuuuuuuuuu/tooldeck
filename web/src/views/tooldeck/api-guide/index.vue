@@ -3,7 +3,11 @@
     <header v-if="!embedded"><span class="eyebrow">TOOLDECK API</span><h1>API 调用指南</h1><p>完成工具发现、任务提交、异步状态查询和文件产物下载的通用接入说明。</p><ElButton type="primary" @click="router.push('/tooldeck/credentials')">管理 API Key</ElButton></header>
     <main>
       <aside
-        ><a v-for="item in sections" :key="item.id" :href="'#' + item.id">{{ item.title }}</a></aside
+        ><span class="nav-label">API 接入</span
+        ><a v-for="(item, i) in sections" :key="item.id" :href="'#' + item.id"
+          ><small>{{ String(i + 1).padStart(2, '0') }}</small
+          >{{ item.title }}</a
+        ></aside
       >
       <article>
         <section id="auth"
@@ -104,25 +108,43 @@
   }
   main {
     display: grid;
-    grid-template-columns: 190px minmax(0, 1fr);
-    gap: 28px;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 40px;
   }
   aside {
     position: sticky;
-    top: 24px;
+    top: 88px;
     align-self: start;
-    display: grid;
-    gap: 5px;
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+    padding: 18px 0;
+  }
+  .nav-label {
+    display: block;
+    margin-bottom: 16px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    color: #6575ad;
   }
   aside a {
+    display: flex;
+    gap: 12px;
     padding: 10px 12px;
+    margin-left: -12px;
     border-radius: 8px;
     color: var(--el-text-color-secondary);
     text-decoration: none;
+    font-size: 13px;
+    transition: background 0.15s;
   }
   aside a:hover {
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
+    color: #5269ef;
+    background: #eef2ff;
+  }
+  aside small {
+    color: #98a1b6;
+    font-size: 11px;
   }
   section {
     padding: 28px 30px;
@@ -171,10 +193,20 @@
     aside {
       position: static;
       display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       overflow: auto;
+      max-height: none;
+      padding: 0;
+    }
+    .nav-label {
+      display: none;
     }
     aside a {
       white-space: nowrap;
+      padding: 6px 10px;
+      margin: 0;
+      border: 1px solid var(--el-border-color-lighter);
     }
     section {
       padding: 22px 18px;

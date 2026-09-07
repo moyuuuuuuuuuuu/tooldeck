@@ -4,7 +4,7 @@
       ><ElTabPane label="工具开发指引" name="development"
         ><div class="tab-content"
           ><header
-      ><div><span class="eyebrow">DEVELOPER DOCUMENTATION</span><h1>开发者文档</h1><p>从工具包开发到 API 接入，在一个页面完成查阅。</p></div
+      ><div><span class="eyebrow">TOOL DEVELOPMENT GUIDE</span><h1>工具开发指引</h1><p>从第一个代码包开始，接入表单、文件与第三方服务。</p></div
       ><ElButton type="primary" @click="$router.push('/tooldeck/tools')">前往上传工具包</ElButton></header
     ><div class="runtime-strip"><span>支持的运行环境</span><b>PHP 8.0–8.3</b><b>Node / JS 20–23</b><b>Python 3.10–3.12</b><b>Go 1.22–1.24</b></div
     ><div class="guide-layout"
@@ -213,8 +213,10 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
   }
   aside {
     position: sticky;
-    top: 24px;
+    top: 88px;
     align-self: start;
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
     padding: 18px 0;
   }
   .nav-label {
@@ -251,6 +253,9 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
   }
   .document-tabs :deep(.el-tabs__header) {
     margin-bottom: 24px;
+  }
+  .document-tabs :deep(.el-tabs__content) {
+    overflow: visible;
   }
   .document-tabs :deep(.el-tabs__item) {
     height: 48px;
@@ -312,6 +317,8 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      max-height: none;
+      overflow: visible;
       padding: 0;
     }
     .nav-label {
