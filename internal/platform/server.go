@@ -358,7 +358,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 	case "/api/core/system/dictAll":
 		jsonResponse(w, 200, map[string]any{})
 	case "/api/core/system/menu":
-		children := []any{menu("my-tools", "MyTools", "我上传的工具", "ri:folder-user-line"), menu("tools", "Tools", "发现工具", "ri:apps-line"), menu("playground", "Playground", "在线运行", "ri:code-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("guide", "Guide", "工具开发指引", "ri:book-line"), menu("runs", "Runs", "我的记录", "ri:history-line"), menu("credentials", "Credentials", "API 接入", "ri:key-2-line")}
+		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("api-guide", "ApiGuide", "API 文档", "ri:terminal-box-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line")}
 		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
 			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))

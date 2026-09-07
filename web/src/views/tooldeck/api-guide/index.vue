@@ -1,0 +1,32 @@
+<template>
+ <div class="api-guide">
+  <header><span class="eyebrow">TOOLDECK API</span><h1>API 调用指南</h1><p>完成工具发现、任务提交、异步状态查询和文件产物下载的通用接入说明。</p><ElButton type="primary" @click="router.push('/tooldeck/credentials')">管理 API Key</ElButton></header>
+  <main>
+   <aside><a v-for="item in sections" :key="item.id" :href="'#'+item.id">{{item.title}}</a></aside>
+   <article>
+    <section id="auth"><h2>1. 身份认证</h2><p>在“API 接入”创建 API Key，并通过请求头传递。不要把 Key 放入 URL、源码或浏览器前端。</p><pre>{{authHeaders}}</pre><p>OAuth 使用 <code>Authorization: Bearer TOKEN</code>，授权范围为 <code>tool:工具名</code> 或 <code>tool:*</code>。</p></section>
+    <section id="tools"><h2>2. 获取可访问工具</h2><pre>GET /api/v1/tools</pre><p>返回当前凭证有权使用的工具版本。调用执行接口时使用返回记录的 <code>id</code>，不要使用工具显示名称代替。</p></section>
+    <section id="submit"><h2>3. 提交工具执行</h2><pre>POST /api/v1/tools/{tool_id}/runs</pre><p>工具详情提供准确请求地址和参数定义。请求体顶层为 <code>input</code>；可选的 <code>env</code> 仅用于本次运行。</p><pre>{{requestBody}}</pre><p>env 省略时使用 API Key 所属用户保存的个人配置，并按工具策略回退作者共享配置；临时覆盖优先级最高。建议优先保存个人配置，生产环境必须使用 HTTPS。</p></section>
+    <section id="status"><h2>4. 查询执行状态与结果</h2><p>提交返回 HTTP 202 或 queued/running 时，读取 <code>data.run_id</code>，使用同一凭证轮询：</p><pre>GET /api/v1/runs/{run_id}</pre><p>终态包括 succeeded、failed、timed_out、canceled。成功数据位于 <code>data.result</code>，文件产物位于 <code>data.artifacts</code>。可取消尚未结束的任务：</p><pre>POST /api/v1/runs/{run_id}/cancel</pre></section>
+    <section id="files"><h2>5. 文件上传与下载</h2><p>输入文件先上传，再把响应中的 file_id 放入工具 input 对应字段：</p><pre>{{fileUpload}}</pre><p>执行结果中的产物使用同一个 API Key 下载：</p><pre>{{fileDownload}}</pre><p>产物默认保存 7 天、最多下载 3 次；到期或次数耗尽后自动删除。</p></section>
+    <section id="retry"><h2>6. 幂等与安全重试</h2><p>每次新操作生成新的 <code>Idempotency-Key</code>。网络错误后重试同一次操作时复用原值，并保持 input 和 env 完全一致。</p><pre>Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000</pre></section>
+    <section id="example"><h2>7. 完整异步调用示例</h2><pre>{{curl}}</pre></section>
+    <section id="errors"><h2>8. 常见状态码</h2><ul><li>200：执行完成或查询成功</li><li>202：任务已接受，需要继续查询</li><li>401/403：凭证无效或没有工具权限</li><li>404：资源不存在或当前身份无权访问</li><li>409：工具未就绪或幂等参数不一致</li><li>422：输入、文件或环境变量校验失败</li><li>429：队列已满或触发频率限制</li></ul><p>env 不会出现在响应、调用记录或执行日志中；异步任务所需临时值会加密保存。</p></section>
+   </article>
+  </main>
+ </div>
+</template>
+<script setup lang="ts">
+import {useRouter} from 'vue-router'
+defineOptions({name:'ApiGuide'})
+const router=useRouter()
+const sections=[{id:'auth',title:'身份认证'},{id:'tools',title:'访问工具'},{id:'submit',title:'提交执行'},{id:'status',title:'状态查询'},{id:'files',title:'文件接口'},{id:'retry',title:'安全重试'},{id:'example',title:'完整示例'},{id:'errors',title:'状态码'}]
+const authHeaders=`X-API-Key: YOUR_API_KEY\nContent-Type: application/json`
+const requestBody=`{\n  "input": { "text": "hello" },\n  "env": { "API_KEY": "仅本次使用的值" }\n}`
+const fileUpload=`POST /api/v1/files\nContent-Type: multipart/form-data\nfile=@/path/to/input.png`
+const fileDownload=`GET /api/v1/files/{file_id}\nX-API-Key: YOUR_API_KEY`
+const curl=`# 1. 获取可访问工具\ncurl 'https://你的域名/api/v1/tools' -H 'X-API-Key: YOUR_API_KEY'\n\n# 2. 提交任务\ncurl -X POST 'https://你的域名/api/v1/tools/TOOL_ID/runs' \\\n+  -H 'X-API-Key: YOUR_API_KEY' \\\n+  -H 'Idempotency-Key: YOUR_UNIQUE_REQUEST_ID' \\\n+  -H 'Content-Type: application/json' \\\n+  -d '{"input":{"text":"hello"}}'\n\n# 3. 查询异步结果\ncurl 'https://你的域名/api/v1/runs/RUN_ID' -H 'X-API-Key: YOUR_API_KEY'\n\n# 4. 下载结果文件\ncurl -OJ 'https://你的域名/api/v1/files/FILE_ID' -H 'X-API-Key: YOUR_API_KEY'`
+</script>
+<style scoped>
+.api-guide{max-width:1320px;margin:auto}.api-guide>header{position:relative;padding:34px 36px;margin-bottom:28px;border:1px solid var(--el-border-color-lighter);border-radius:20px;background:linear-gradient(120deg,var(--el-color-primary-light-9),var(--el-bg-color) 70%)}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--el-color-primary);font-weight:700}h1{font-size:32px;margin:8px 0}header p{max-width:760px;color:var(--el-text-color-secondary);line-height:1.8}header .el-button{position:absolute;right:36px;top:50%;transform:translateY(-50%)}main{display:grid;grid-template-columns:190px minmax(0,1fr);gap:28px}aside{position:sticky;top:24px;align-self:start;display:grid;gap:5px}aside a{padding:10px 12px;border-radius:8px;color:var(--el-text-color-secondary);text-decoration:none}aside a:hover{color:var(--el-color-primary);background:var(--el-color-primary-light-9)}section{padding:28px 30px;margin-bottom:20px;border:1px solid var(--el-border-color-lighter);border-radius:16px;background:var(--el-bg-color);scroll-margin-top:24px}h2{margin:0 0 16px;font-size:21px}p,li{color:var(--el-text-color-secondary);line-height:1.85;font-size:14px}pre{padding:18px 20px;border-radius:10px;background:var(--el-fill-color-light);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}code{color:var(--el-color-primary)}ul{padding-left:20px}@media(max-width:800px){.api-guide>header{padding:26px 22px}header .el-button{position:static;transform:none;margin-top:10px}main{grid-template-columns:1fr}aside{position:static;display:flex;overflow:auto}aside a{white-space:nowrap}section{padding:22px 18px}h1{font-size:27px}}
+</style>

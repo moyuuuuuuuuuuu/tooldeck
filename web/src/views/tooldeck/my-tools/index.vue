@@ -1,6 +1,6 @@
 <template>
   <section>
-    <header class="heading"><div><h1>我上传的工具</h1><p>管理每个版本的发布状态，查看审核反馈。</p></div><ElButton type="primary" @click="router.push('/tooldeck/tools?upload=1')">上传工具包</ElButton></header>
+    <header class="heading"><div><h1>我的工具</h1><p>管理每个版本的构建、发布状态与审核反馈。</p></div><ElButton type="primary" @click="router.push('/tooldeck/tools?upload=1')">上传工具包</ElButton></header>
     <div class="filters"><ElInput v-model="search" placeholder="搜索工具名称或版本" clearable/><ElSelect v-model="filter"><ElOption label="全部状态" value=""/><ElOption v-for="(label,key) in labels" :key="key" :label="label" :value="key"/></ElSelect><ElButton :loading="loading" @click="load">刷新</ElButton></div>
     <ElTable v-loading="loading" :data="filtered" empty-text="暂无符合条件的工具">
       <ElTableColumn label="工具" min-width="240"><template #default="{row}"><strong>{{row.manifest.title}}</strong><div class="secondary">{{row.manifest.name}} · v{{row.manifest.version}}</div><div class="description">{{row.manifest.description}}</div></template></ElTableColumn>
