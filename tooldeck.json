@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "blank-go",
+  "title": "Go 空白工具模板",
+  "description": "使用结构体、应用类型和明确错误返回的 Go 工具起点。",
+  "version": "1.0.0",
+  "runtime": "go",
+  "runtime_version": "1.22",
+  "entrypoint": "main.go",
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "network": {"enabled": false, "allowed_hosts": []},
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {"text": {"type": "string", "title": "文本内容", "minLength": 1}},
+    "required": ["text"]
+  },
+  "ui_schema": {"text": {"widget": "textarea", "rows": 4, "order": 10}},
+  "output_schema": {"type": "json"}
+}
