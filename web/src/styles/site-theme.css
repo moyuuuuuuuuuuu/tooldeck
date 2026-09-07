@@ -1,0 +1,9 @@
+html{--td-page:#fcfcfe;--td-hero:linear-gradient(115deg,#edf0ff,#f6f8ff 65%,#eaf7f4);--td-hero-border:#e4e9f6;--td-heading:#27324d;--td-secondary:#6a7690;--td-active:#eef2ff;--td-active-text:#4d61d6}
+html.dark{--td-page:#10141c;--td-hero:linear-gradient(115deg,#1c2540,#1b2432 65%,#182c2c);--td-hero-border:#2c3850;--td-heading:#e5eaf5;--td-secondary:#a6b1c6;--td-active:#263252;--td-active-text:#a5b6ff;--el-bg-color:#181e29;--el-bg-color-page:#10141c;--el-bg-color-overlay:#202837;--el-border-color:#364052;--el-border-color-light:#30394a;--el-border-color-lighter:#293344;--el-text-color-primary:#e5eaf5;--el-text-color-regular:#c3cddd;--el-text-color-secondary:#9eacc2;--el-text-color-placeholder:#8997ae}
+html body,html #app,html #app .site,html #app .public-site{background:var(--td-page);color:var(--el-text-color-primary)}
+html #app .tool-page>header,html #app .profile>header{background:var(--td-hero);border-color:var(--td-hero-border);color:var(--td-heading)}
+html #app .tool-page>header h1{color:var(--td-heading)}
+html #app .tool-page>header p,html #app .profile>header p{color:var(--td-secondary)}
+html #app .site-header nav a.router-link-active{background:var(--td-active);color:var(--td-active-text)}
+html.dark #app .login,html.dark #app .register,html.dark #app .reset{background:radial-gradient(ellipse at 20% 20%,#1c2841,transparent 60%),var(--td-page)}
+html.dark #app .visibility.public{color:#70c5ac}

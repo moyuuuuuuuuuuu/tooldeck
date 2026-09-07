@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "stream-demo",
+  "title": "SSE 流式输出示例",
+  "description": "每隔一秒输出一个片段，验证网页和 API 实时接收，不调用外部服务。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "async",
+    "timeout_seconds": 30,
+    "memory_mb": 256,
+    "stream": true
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "ui_schema": {},
+  "output_schema": {
+    "type": "json"
+  },
+  "runtime_version": "8.1"
+}

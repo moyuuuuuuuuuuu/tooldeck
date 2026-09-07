@@ -16,7 +16,7 @@ func TestAccountEnvironment(t *testing.T) {
 	}
 	tool := Tool{Owner: "author", Manifest: Manifest{Name: "test", EnvMode: "user", Env: []EnvField{{Name: "API_KEY", Required: true}}}}
 	env, _, err := s.toolEnvironment(tool, "alice")
-	if err != nil || env[0] != "API_KEY=account-secret" {
+	if err == nil {
 		t.Fatal(env, err)
 	}
 	if _, _, err = s.toolEnvironment(tool, "bob"); err == nil {
@@ -27,6 +27,11 @@ func TestAccountEnvironment(t *testing.T) {
 	env, _, err = s.toolEnvironment(tool, "alice")
 	if err != nil || env[0] != "API_KEY=override" {
 		t.Fatal(env, err)
+	}
+	other := tool
+	other.Manifest.Name = "another-tool"
+	if _, _, e := s.toolEnvironment(other, "alice"); e == nil {
+		t.Fatal("cross-tool leak")
 	}
 	tool.Manifest.Env = nil
 	env, _, err = s.toolEnvironment(tool, "alice")

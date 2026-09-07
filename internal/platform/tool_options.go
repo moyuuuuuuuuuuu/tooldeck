@@ -10,13 +10,16 @@ import (
 )
 
 func canUseTool(p Principal, t Tool) bool {
+	if p.Guest {
+		return guestTool(t)
+	}
 	if !p.allows(t.Manifest.Name) {
 		return false
 	}
 	if p.Admin || t.Owner != "" && t.Owner == p.owner() {
 		return true
 	}
-	return (t.BuildStatus == "" || t.BuildStatus == "ready") && (t.Public == nil || *t.Public) && (t.ReviewStatus == "" || t.ReviewStatus == "approved")
+	return !t.Withdrawn && (t.BuildStatus == "" || t.BuildStatus == "ready") && (t.Public == nil || *t.Public) && (t.ReviewStatus == "" || t.ReviewStatus == "approved")
 }
 
 func (s *Server) notifications(w http.ResponseWriter, r *http.Request, p Principal, parts []string) {

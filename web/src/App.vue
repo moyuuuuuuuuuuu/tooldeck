@@ -11,7 +11,10 @@
   import { systemUpgrade } from './utils/sys'
   import { toggleTransition } from './utils/ui/animation'
   import { checkStorageCompatibility } from './utils/storage'
-  import { initializeTheme } from './hooks/core/useTheme'
+  import { initializeSiteTheme } from './hooks/core/useSiteTheme'
+  import './styles/site-theme.css'
+  let stopTheme: (()=>void)|undefined
+  onBeforeUnmount(()=>stopTheme?.())
 
   const userStore = useUserStore()
   const { language } = storeToRefs(userStore)
@@ -23,7 +26,7 @@
 
   onBeforeMount(() => {
     toggleTransition(true)
-    initializeTheme()
+    stopTheme=initializeSiteTheme()
   })
 
   onMounted(() => {

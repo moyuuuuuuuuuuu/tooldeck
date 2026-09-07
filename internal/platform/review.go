@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Principal, parts []string) {
@@ -88,7 +89,7 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 		s.store.Lock()
 		list := []Tool{}
 		for _, t := range s.store.State.Tools {
-			if t.Public == nil || *t.Public {
+			if !t.Withdrawn && (t.Public == nil || *t.Public) {
 				list = append(list, t)
 			}
 		}
@@ -106,6 +107,10 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 			fail(w, 400, e)
 			return
 		}
+		if b.Status == "rejected" && strings.TrimSpace(b.Note) == "" {
+			fail(w, 422, "请填写驳回原因")
+			return
+		}
 		if (b.Status != "approved" && b.Status != "rejected") || len([]rune(b.Note)) > 500 {
 			fail(w, 422, "审核结果无效或备注超过500字")
 			return
@@ -115,6 +120,10 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 		t, ok := s.store.State.Tools[parts[1]]
 		if !ok {
 			fail(w, 404, "tool not found")
+			return
+		}
+		if t.Withdrawn {
+			fail(w, 409, "工具已下架，请等待作者重新提交")
 			return
 		}
 		if t.Public != nil && !*t.Public {

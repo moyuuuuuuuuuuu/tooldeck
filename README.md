@@ -100,7 +100,7 @@ python scripts/package-examples.py
 
 个人中心提供统一环境变量管理，最多 50 个。执行时按以下优先级匹配工具声明的变量：
 
-**工具个人配置 → 账号统一配置 → 作者共享配置**
+**当前工具个人配置 → 当前工具作者共享配置**
 
 作者可禁用共享回退。网页和本人 API Key 调用共用配置；未声明的变量不会自动注入。所有值加密保存且不回显，缺失必填变量时拒绝运行。不要把真实凭证放入源码、表单、结果或日志。
 
@@ -201,3 +201,21 @@ npm run build
 ### 群晖兼容部署
 
 部分 DSM 内核不支持 CFS CPU 配额、PID 限制或私有 cgroup。显式设置 TOOLDECK_SANDBOX_PROFILE=synology 后，构建与执行固定至 CPU 0，省略 PID 限制及私有 cgroup 参数；不自动降级其他环境。该模式隔离能力较弱，需自行确认接受。示例见 deploy/compose.synology.yaml，复制到 /volume1/docker/tooldeck/compose.yaml 使用；先创建 data 目录，导入 tooldeck:dev 镜像并放置 .env。NAS 主机的 seccomp 是否生效取决于内核支持，不能由配置补足。
+
+## SSE 流式输出
+
+工具声明 `execution.stream: true` 后，向 stderr 输出 `TOOLDECK_EVENT {"type":"delta","text":"片段"}`（每条换行并 flush），stdout 仍在结束时输出完整 JSON，文件产物协议不变。参考 `examples/stream-demo` 和站内开发指引。
+
+网页实时追加显示内容。API 在执行 POST 请求中携带 `Accept: text/event-stream`，或创建任务后 GET `/api/v1/runs/{run_id}/events`；均要求登录令牌、API Key 或 OAuth。事件包含 run/status/delta/result/error/done/heartbeat，使用 delta 的 id 通过 Last-Event-ID 断线续传。断开订阅不取消任务。每实例最多 32 个 SSE 连接，单任务最多 4096 条事件，单行最多 64 KB，stderr 含事件合计最多 3 MB。
+
+最终事件与结果保存在任务记录；意外退出前尚未落盘的增量可能丢失。反向代理需关闭缓冲并允许长连接，凭证不能放入 URL。工具仍需自行启用模型服务商的流式接口并逐片段转发；本示例不调用真实模型。
+
+### 忘记密码
+
+登录页点击「忘记密码」，使用已验证的注册邮箱接收6位验证码后设置新密码（12–128字节）。复用 `TOOLDECK_SMTP_*` 配置；重置验证码与注册验证码隔离，10分钟有效、60秒发送间隔、每邮箱每日最多10次，连续5次校验失败后需重新获取。成功后验证码立即失效，撤销该用户所有网页登录会话，保留 API Key 和业务数据。未绑定已验证邮箱的旧账号不能通过此方式找回。
+
+### 免登录使用
+
+未登录访问首页或 `/tooldeck/tools` 会进入 `/explore` 访客页面。仅公开、审核通过、构建成功、未下架且 `env` 和旧版 `secrets` 都为空的工具可匿名运行。同步、异步、SSE 与文件输入输出均按独立访客 Cookie 隔离，不提供匿名历史列表。上传工具、个人配置及账号功能仍需登录。
+
+访客仅支持站内网页操作；网页内部请求要求同源浏览器上下文，不作为开放 API 提供。正式 `/api/v1/` 调用仍必须使用 API Key / OAuth，私有工具不向访客开放。访客写操作受全站账户操作频率限制，队列容量限制继续生效。

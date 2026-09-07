@@ -52,6 +52,7 @@ type Manifest struct {
 	Runtime        string     `json:"runtime"`
 	Entrypoint     string     `json:"entrypoint"`
 	Execution      struct {
+		Stream  bool   `json:"stream,omitempty"`
 		Mode    string `json:"mode"`
 		Timeout int    `json:"timeout_seconds"`
 		Memory  int    `json:"memory_mb"`
@@ -68,6 +69,7 @@ type Manifest struct {
 	} `json:"output_schema"`
 }
 type Tool struct {
+	Withdrawn    bool      `json:"withdrawn,omitempty"`
 	Playground   bool      `json:"playground,omitempty"`
 	BuildStatus  string    `json:"build_status,omitempty"`
 	BuildLog     string    `json:"build_log,omitempty"`
@@ -85,6 +87,7 @@ type Tool struct {
 	Created      time.Time `json:"created_at"`
 }
 type Run struct {
+	Events           []StreamEvent  `json:"stream_events,omitempty"`
 	EmailSent        bool           `json:"email_sent"`
 	EmailAttempts    int            `json:"email_attempts"`
 	EmailNext        time.Time      `json:"email_next,omitempty"`

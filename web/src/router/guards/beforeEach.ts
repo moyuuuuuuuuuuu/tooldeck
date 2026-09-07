@@ -280,6 +280,7 @@ function handleLoginStatus(
   userStore: ReturnType<typeof useUserStore>,
   next: NavigationGuardNext
 ): boolean {
+  if(!userStore.isLogin && (to.path==='/' || to.path==='/tooldeck/tools')){next({path:'/explore',query:to.query,replace:true});return false}
   const requiresAuth = to.matched.some((record) => record.meta?.requiresAuth === true)
 
   if (userStore.isLogin) {

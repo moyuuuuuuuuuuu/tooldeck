@@ -108,13 +108,21 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 func (s *Server) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Referrer-Policy", "same-origin")
 		if r.URL.Path == "/healthz" {
 			jsonResponse(w, 200, map[string]string{"status": "ok"})
 			return
 		}
 		if r.URL.Path == "/api/core/login" && r.Method == "POST" {
 			s.login(w, r)
+			return
+		}
+		if r.URL.Path == "/api/core/password-reset/email-code" && r.Method == "POST" {
+			s.sendAccountCode(w, r, true)
+			return
+		}
+		if r.URL.Path == "/api/core/password-reset" && r.Method == "POST" {
+			s.resetPassword(w, r)
 			return
 		}
 		if r.URL.Path == "/api/core/register/email-code" && r.Method == "POST" {
@@ -127,6 +135,10 @@ func (s *Server) Handler() http.Handler {
 		}
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			s.serveWeb(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/public/") {
+			s.guestEndpoint(w, r)
 			return
 		}
 		p, e := s.authenticate(r)
@@ -145,6 +157,10 @@ func (s *Server) Handler() http.Handler {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
 		parts := strings.Split(path, "/")
 		switch {
+		case path == "my-tools":
+			s.myTools(w, r, p)
+		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "publication":
+			s.publication(w, r, p, parts[1])
 		case path == "playground":
 			s.playground(w, r, p)
 		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "build":
@@ -163,7 +179,7 @@ func (s *Server) Handler() http.Handler {
 			s.store.Lock()
 			list := []Tool{}
 			for _, t := range s.store.State.Tools {
-				if !t.Playground && canUseTool(p, t) {
+				if !t.Playground && !t.Withdrawn && canUseTool(p, t) {
 					visible := t
 					if !p.Admin && toolOwner(t) != p.owner() {
 						visible.BuildLog = ""
@@ -199,6 +215,8 @@ func (s *Server) Handler() http.Handler {
 				list = list[:200]
 			}
 			jsonResponse(w, 200, list)
+		case len(parts) == 3 && parts[0] == "runs" && parts[2] == "events":
+			s.streamRun(w, r, p, parts[1])
 		case len(parts) >= 2 && parts[0] == "runs":
 			s.runEndpoint(w, r, p, parts)
 		case path == "files" && r.Method == "POST":
@@ -316,7 +334,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 	case "/api/core/system/dictAll":
 		jsonResponse(w, 200, map[string]any{})
 	case "/api/core/system/menu":
-		children := []any{menu("tools", "Tools", "发现工具", "ri:apps-line"), menu("playground", "Playground", "在线运行", "ri:code-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("guide", "Guide", "工具开发指引", "ri:book-line"), menu("runs", "Runs", "我的记录", "ri:history-line"), menu("credentials", "Credentials", "API 接入", "ri:key-2-line")}
+		children := []any{menu("my-tools", "MyTools", "我上传的工具", "ri:folder-user-line"), menu("tools", "Tools", "发现工具", "ri:apps-line"), menu("playground", "Playground", "在线运行", "ri:code-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("guide", "Guide", "工具开发指引", "ri:book-line"), menu("runs", "Runs", "我的记录", "ri:history-line"), menu("credentials", "Credentials", "API 接入", "ri:key-2-line")}
 		if p.Admin {
 			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))
 		}
@@ -385,6 +403,13 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 	if command := r.FormValue("build_command"); command != "" {
 		m.BuildCommand = command
 	}
+	if value := r.FormValue("stream"); value != "" {
+		if value != "true" && value != "false" {
+			fail(w, 422, "invalid stream option")
+			return
+		}
+		m.Execution.Stream = value == "true"
+	}
 	apiEnabled := true
 	notify := false
 	for field, target := range map[string]*bool{"public": &public, "api_enabled": &apiEnabled, "notify_result": &notify} {
@@ -436,18 +461,8 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 			return
 		}
 	}
-	if m.Env == nil {
-		var latest Tool
-		for _, existing := range s.store.State.Tools {
-			if existing.Manifest.Name == m.Name && toolOwner(existing) == p.owner() && existing.Created.After(latest.Created) {
-				latest = existing
-			}
-		}
-		m.Env = latest.Manifest.Env
-		if m.EnvMode == "" {
-			m.EnvMode = latest.Manifest.EnvMode
-		}
-	}
+	// Environment requirements belong to the uploaded version; absent or empty means none.
+
 	if e := m.Validate(); e != nil {
 		fail(w, 422, e)
 		return
@@ -488,7 +503,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		fail(w, 404, "tool unavailable")
 		return
 	}
-	if !p.Session && t.APIEnabled != nil && !*t.APIEnabled {
+	if !p.Session && !p.Guest && t.APIEnabled != nil && !*t.APIEnabled {
 		s.store.Unlock()
 		fail(w, 403, "此工具未开放 API 调用，请在网页中使用")
 		return
@@ -559,7 +574,11 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		}
 	}
 	s.store.Unlock()
-	if t.Manifest.Execution.Mode == "sync" {
+	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		s.streamRun(w, r, p, run.ID)
+		return
+	}
+	if t.Manifest.Execution.Mode == "sync" && !t.Manifest.Execution.Stream {
 		timer := time.NewTimer(20 * time.Second)
 		defer timer.Stop()
 		ticker := time.NewTicker(100 * time.Millisecond)

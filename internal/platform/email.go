@@ -15,6 +15,7 @@ import (
 )
 
 type EmailCode struct {
+	UserID   string    `json:"user_id,omitempty"`
 	Hash     string    `json:"hash"`
 	Sent     time.Time `json:"sent"`
 	Expires  time.Time `json:"expires"`
@@ -32,6 +33,9 @@ func emailCodeHash(email, code string) string {
 	return hash(os.Getenv("TOOLDECK_MASTER_KEY") + ":" + email + ":" + code)
 }
 func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
+	s.sendAccountCode(w, r, false)
+}
+func (s *Server) sendAccountCode(w http.ResponseWriter, r *http.Request, reset bool) {
 	if !s.accountRate(w) {
 		return
 	}
@@ -59,17 +63,32 @@ func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
 	code := fmt.Sprintf("%06d", n)
 	now := time.Now()
 	s.store.Lock()
+	key := email
+	userID := ""
 	for _, u := range s.store.State.Users {
 		if strings.EqualFold(u.Email, email) {
+			if !reset {
+				s.store.Unlock()
+				fail(w, 409, "该邮箱已注册")
+				return
+			}
+			if u.EmailVerified {
+				userID = u.ID
+			}
+		}
+	}
+	if reset {
+		key = "reset:" + email
+		if userID == "" {
 			s.store.Unlock()
-			fail(w, 409, "该邮箱已注册")
+			jsonResponse(w, 200, map[string]int{"retry_after": 60, "expires_in": 600})
 			return
 		}
 	}
 	if s.store.State.EmailCodes == nil {
 		s.store.State.EmailCodes = map[string]EmailCode{}
 	}
-	c := s.store.State.EmailCodes[email]
+	c := s.store.State.EmailCodes[key]
 	if now.Sub(c.Sent) < time.Minute {
 		s.store.Unlock()
 		fail(w, 429, "请60秒后重新发送")
@@ -85,6 +104,7 @@ func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Empty hash reserves the cooldown but cannot be used to register until delivery succeeds.
+	c.UserID = userID
 	c.Sent = now
 	c.Expires = now.Add(10 * time.Minute)
 	c.Attempts = 0
@@ -95,7 +115,7 @@ func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
 			delete(s.store.State.EmailCodes, address)
 		}
 	}
-	s.store.State.EmailCodes[email] = c
+	s.store.State.EmailCodes[key] = c
 	if e = s.store.save(); e != nil {
 		s.store.Unlock()
 		fail(w, 500, "验证码保存失败")
@@ -105,6 +125,11 @@ func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
 	sender := s.mailSender
 	if sender == nil {
 		sender = sendSMTPCode
+		if reset {
+			sender = func(to, code string) error {
+				return sendSMTPMessage(to, "ToolDeck password reset", "你的 ToolDeck 密码重置验证码是："+code+"\r\n验证码10分钟内有效，请勿向他人透露。若非本人操作，请忽略此邮件。")
+			}
+		}
 	}
 	e = sender(email, code)
 	s.store.Lock()
@@ -113,11 +138,15 @@ func (s *Server) sendEmailCode(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "验证码发送失败，请稍后重试")
 		return
 	}
-	c.Hash = emailCodeHash(email, code)
-	s.store.State.EmailCodes[email] = c
+	if !s.store.State.EmailCodes[key].Sent.Equal(c.Sent) {
+		fail(w, 409, "验证码已更新，请使用最新邮件")
+		return
+	}
+	c.Hash = emailCodeHash(key, code)
+	s.store.State.EmailCodes[key] = c
 	if e = s.store.save(); e != nil {
 		c.Hash = ""
-		s.store.State.EmailCodes[email] = c
+		s.store.State.EmailCodes[key] = c
 		fail(w, 500, "验证码保存失败，请稍后重试")
 		return
 	}

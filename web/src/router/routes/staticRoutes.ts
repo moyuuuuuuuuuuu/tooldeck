@@ -11,6 +11,7 @@ import { AppRouteRecordRaw } from '@/utils/router'
  * 2、静态路由不管是否登录都可以访问
  */
 export const staticRoutes: AppRouteRecordRaw[] = [
+ {path:'/explore',name:'PublicExplore',component:()=>import('@views/tooldeck/explore/index.vue'),meta:{title:'发现工具',isHideTab:true}},
   // 不需要登录就能访问的路由示例
   // {
   //   path: '/welcome',

@@ -62,9 +62,6 @@ func (s *Server) toolEnvironment(t Tool, owner string) ([]string, []string, erro
 	redactions := []string{}
 	for _, f := range t.Manifest.Env {
 		cipher := values[f.Name]
-		if cipher == "" {
-			cipher = s.store.State.AccountEnv[owner][f.Name]
-		}
 		if cipher == "" && t.Manifest.EnvMode != "user" {
 			cipher = defaults[f.Name]
 		}
@@ -116,10 +113,12 @@ func (s *Server) environmentEndpoint(w http.ResponseWriter, r *http.Request, p P
 	key := envKey(scoped, subject)
 	if r.Method == "POST" {
 		var b struct {
-			Mode   *string           `json:"mode"`
-			Fields *[]EnvField       `json:"fields"`
-			Values map[string]string `json:"values"`
-			Delete []string          `json:"delete"`
+			Mode       *string           `json:"mode"`
+			Fields     *[]EnvField       `json:"fields"`
+			Values     map[string]string `json:"values"`
+			CopyToTool string            `json:"copy_to_tool"`
+			ImportKeys []string          `json:"import_keys"`
+			Delete     []string          `json:"delete"`
 		}
 		if e := decode(w, r, &b); e != nil {
 			fail(w, 400, e)
@@ -198,10 +197,29 @@ func (s *Server) environmentEndpoint(w http.ResponseWriter, r *http.Request, p P
 	fields := []any{}
 	for _, f := range t.Manifest.Env {
 		v := map[string]any{"name": f.Name, "description": f.Description, "required": f.Required, "sensitive": f.Sensitive}
-		{
-			cipher := s.store.State.ToolEnv[key][f.Name]
-			v["configured"] = cipher != ""
+
+		configured := s.store.State.ToolEnv[key][f.Name] != ""
+		fallback := "none"
+		if !sharedScope {
+			if t.Manifest.EnvMode != "user" {
+				shared := t
+				shared.Manifest.EnvMode = "developer"
+				if s.store.State.ToolEnv[envKey(shared, toolOwner(t))][f.Name] != "" {
+					fallback = "shared"
+				}
+			}
 		}
+		source := fallback
+		if configured {
+			source = "personal"
+			if sharedScope {
+				source = "shared"
+			}
+		}
+		v["configured"] = configured
+		v["source"] = source
+		v["fallback_source"] = fallback
+
 		fields = append(fields, v)
 	}
 	mode := t.Manifest.EnvMode
@@ -221,11 +239,53 @@ func (s *Server) accountEnvironment(w http.ResponseWriter, r *http.Request, p Pr
 	owner := p.owner()
 	if r.Method == "POST" {
 		var b struct {
-			Values map[string]string `json:"values"`
-			Delete []string          `json:"delete"`
+			Values     map[string]string `json:"values"`
+			CopyToTool string            `json:"copy_to_tool"`
+			ImportKeys []string          `json:"import_keys"`
+			Delete     []string          `json:"delete"`
 		}
 		if e := decode(w, r, &b); e != nil {
 			fail(w, 400, e)
+			return
+		}
+		if b.CopyToTool != "" {
+			t, ok := s.store.State.Tools[b.CopyToTool]
+			if !ok || !canUseTool(p, t) {
+				fail(w, 404, "tool unavailable")
+				return
+			}
+			allowed := map[string]bool{}
+			for _, f := range t.Manifest.Env {
+				allowed[f.Name] = true
+			}
+			t.Manifest.EnvMode = "user"
+			key := envKey(t, owner)
+			old := s.store.State.ToolEnv[key]
+			next := map[string]string{}
+			for k, v := range old {
+				next[k] = v
+			}
+			for _, name := range b.ImportKeys {
+				if !allowed[name] || s.store.State.AccountEnv[owner][name] == "" {
+					fail(w, 422, "变量未声明或旧配置不存在")
+					return
+				}
+				if next[name] != "" {
+					fail(w, 409, "工具已有该变量，请在工具配置中处理")
+					return
+				}
+				next[name] = s.store.State.AccountEnv[owner][name]
+			}
+			if s.store.State.ToolEnv == nil {
+				s.store.State.ToolEnv = map[string]map[string]string{}
+			}
+			s.store.State.ToolEnv[key] = next
+			if e := s.store.save(); e != nil {
+				s.store.State.ToolEnv[key] = old
+				fail(w, 500, e)
+				return
+			}
+			jsonResponse(w, 200, true)
 			return
 		}
 		old := s.store.State.AccountEnv[owner]

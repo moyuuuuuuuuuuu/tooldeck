@@ -18,6 +18,7 @@ import (
 )
 
 type Principal struct {
+	Guest   bool
 	UserID  string
 	Session bool
 	ID      string

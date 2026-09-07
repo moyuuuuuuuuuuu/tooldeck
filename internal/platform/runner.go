@@ -102,6 +102,7 @@ func (s *Server) execute(parent context.Context, r Run) {
 		if s.store.State.Runs[r.ID].Status == "canceled" {
 			r.Status = "canceled"
 		}
+		r.Events = s.store.State.Runs[r.ID].Events
 		s.store.State.Runs[r.ID] = r
 		if e := s.store.save(); e != nil {
 			fmt.Fprintln(os.Stderr, e)
@@ -109,6 +110,10 @@ func (s *Server) execute(parent context.Context, r Run) {
 	}
 	if err != nil {
 		finish(err)
+		return
+	}
+	if strings.HasPrefix(r.Owner, "guest:") && !guestTool(tool) {
+		finish(fmt.Errorf("工具已不支持匿名运行，请登录后重试"))
 		return
 	}
 	inputBytes, _ := json.Marshal(r.Input)
@@ -208,8 +213,30 @@ func (s *Server) execute(parent context.Context, r Run) {
 	stdout := &cappedBuffer{Limit: 68 << 20}
 	stderr := &cappedBuffer{Limit: 1 << 20}
 	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+	var stream *eventWriter
+	if m.Execution.Stream {
+		stream = &eventWriter{logs: stderr, emit: func(e StreamEvent) {
+			s.store.Lock()
+			defer s.store.Unlock()
+			current := s.store.State.Runs[r.ID]
+			if len(current.Events) < 4096 {
+				current.Events = append(current.Events, e)
+				s.store.State.Runs[r.ID] = current
+			} else {
+				cancel()
+			}
+		}}
+		cmd.Stderr = stream
+	} else {
+		cmd.Stderr = stderr
+	}
 	err = cmd.Run()
+	if stream != nil {
+		if e := stream.finish(); err == nil && e != nil {
+			err = e
+		}
+	}
+
 	cleanup, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	_ = exec.CommandContext(cleanup, "docker", "rm", "-f", name).Run()
 	cleanupCancel()

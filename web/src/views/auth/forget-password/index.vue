@@ -1,62 +1,14 @@
-<template>
-  <div class="flex w-full h-screen">
-    <LoginLeftView />
-
-    <div class="relative flex-1">
-      <AuthTopBar />
-
-      <div class="auth-right-wrap">
-        <div class="form">
-          <h3 class="title">{{ $t('forgetPassword.title') }}</h3>
-          <p class="sub-title">{{ $t('forgetPassword.subTitle') }}</p>
-          <div class="mt-5">
-            <span class="input-label" v-if="showInputLabel">账号</span>
-            <ElInput
-              class="custom-height"
-              :placeholder="$t('forgetPassword.placeholder')"
-              v-model.trim="username"
-            />
-          </div>
-
-          <div style="margin-top: 15px">
-            <ElButton
-              class="w-full custom-height"
-              type="primary"
-              @click="register"
-              :loading="loading"
-              v-ripple
-            >
-              {{ $t('forgetPassword.submitBtnText') }}
-            </ElButton>
-          </div>
-
-          <div style="margin-top: 15px">
-            <ElButton class="w-full custom-height" plain @click="toLogin">
-              {{ $t('forgetPassword.backBtnText') }}
-            </ElButton>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
+<template><div class="reset"><div class="auth-theme"><ThemeSwitch/></div><ElCard><RouterLink class="brand" to="/auth/login">ToolDeck</RouterLink><h1>忘记密码</h1><p>通过注册邮箱验证身份，设置新的登录密码。</p><ElForm label-position="top" @submit.prevent="submit"><ElFormItem label="注册邮箱" required><ElInput v-model="form.email" type="email" autocomplete="email" placeholder="请输入注册时验证的邮箱"/></ElFormItem><ElFormItem label="邮箱验证码" required><ElInput v-model="form.code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="6位验证码"><template #append><ElButton :disabled="remaining>0" :loading="sending" @click="sendCode">{{remaining>0?`${remaining}秒后重发`:'发送验证码'}}</ElButton></template></ElInput></ElFormItem><ElFormItem label="新密码" required><ElInput v-model="form.password" type="password" show-password autocomplete="new-password" placeholder="至少12位，最多128字节"/></ElFormItem><ElFormItem label="确认新密码" required><ElInput v-model="confirm" type="password" show-password autocomplete="new-password" @keyup.enter="submit"/></ElFormItem><ElButton type="primary" size="large" :loading="busy" @click="submit" style="width:100%">重置密码</ElButton></ElForm><p class="hint">验证码10分钟内有效。重置后，所有设备上的网页登录将失效。</p><ElButton link type="primary" @click="router.push('/auth/login')">返回登录</ElButton></ElCard></div></template>
 <script setup lang="ts">
-  defineOptions({ name: 'ForgetPassword' })
-
-  const router = useRouter()
-  const showInputLabel = ref(false)
-
-  const username = ref('')
-  const loading = ref(false)
-
-  const register = async () => {}
-
-  const toLogin = () => {
-    router.push({ name: 'Login' })
-  }
+import ThemeSwitch from '../../tooldeck/components/ThemeSwitch.vue'
+import {reactive,ref,onBeforeUnmount} from 'vue'
+import {useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import request from '@/utils/http'
+const router=useRouter(),form=reactive({email:'',code:'',password:''}),confirm=ref(''),busy=ref(false),sending=ref(false),remaining=ref(0)
+let timer:ReturnType<typeof setInterval>|undefined
+async function sendCode(){if(sending.value||remaining.value>0)return;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())){ElMessage.warning('请填写有效邮箱');return}sending.value=true;try{const r=await request.post<{retry_after:number}>({url:'/core/password-reset/email-code',data:{email:form.email}});remaining.value=r.retry_after;ElMessage.success('如果该邮箱已注册并验证，验证码将发送至你的邮箱，请查收');clearInterval(timer);timer=setInterval(()=>{remaining.value--;if(remaining.value<=0)clearInterval(timer)},1000)}finally{sending.value=false}}
+async function submit(){if(busy.value)return;if(!form.email.trim()||!/^\d{6}$/.test(form.code)){ElMessage.warning('请填写邮箱和6位验证码');return}const size=new TextEncoder().encode(form.password).length;if(size<12||size>128){ElMessage.warning('新密码需12–128字节');return}if(form.password!==confirm.value){ElMessage.warning('两次密码不一致');return}busy.value=true;try{await request.post({url:'/core/password-reset',data:form});form.password='';confirm.value='';ElMessage.success('密码已重置，请使用新密码登录');await router.push('/auth/login')}finally{busy.value=false}}
+onBeforeUnmount(()=>clearInterval(timer))
 </script>
-
-<style scoped>
-  @import '../login/style.css';
-</style>
+<style scoped>.auth-theme{position:absolute;right:24px;top:24px}.reset{min-height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at 20% 20%,#e5efff,transparent 60%),#fcfcfe;padding:24px}.el-card{width:min(460px,100%);padding:24px;border-radius:18px}.brand{font-size:18px;font-weight:800;color:#5269ef;text-decoration:none}h1{font-size:28px;margin-top:26px}p{color:var(--el-text-color-secondary);margin:12px 0 24px;line-height:1.7}.hint{font-size:12px;margin:18px 0}</style>
