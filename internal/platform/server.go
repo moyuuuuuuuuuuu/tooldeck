@@ -358,7 +358,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 	case "/api/core/system/dictAll":
 		jsonResponse(w, 200, map[string]any{})
 	case "/api/core/system/menu":
-		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发者文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line")}
+		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line")}
 		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
 			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))

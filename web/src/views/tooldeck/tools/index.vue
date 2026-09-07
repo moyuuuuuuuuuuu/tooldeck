@@ -2,7 +2,7 @@
   <div class="tool-page">
     <header
       ><div><span class="eyebrow">YOUR PERSONAL TOOLKIT</span><h1>找到工具，让想法即刻发生</h1><p>选择合适的工具，填写参数或上传素材，即刻获得结果。</p></div
-      ><div v-if="useUserStore().isLogin" class="actions"><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发者文档</ElButton><ElButton type="primary" size="large" @click="uploadOpen = true">＋ 上传工具包</ElButton></div></header
+      ><div v-if="useUserStore().isLogin" class="actions"><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发文档</ElButton><ElButton type="primary" size="large" @click="uploadOpen = true">＋ 上传工具包</ElButton></div></header
     >
     <div class="filters"
       ><ElInput v-model="search" placeholder="搜索工具名称或用途" clearable style="max-width: 340px" /><ElSelect v-if="isAdmin()" v-model="runtime" clearable placeholder="所有运行环境" style="width: 170px"><ElOption v-for="r in ['php', 'js', 'node', 'python', 'go']" :key="r" :label="r" :value="r" /></ElSelect><ElButton @click="load">刷新</ElButton></div

@@ -1,6 +1,9 @@
 <template>
   <article class="guide"
-    ><header
+    ><ElTabs v-model="activeTab" class="document-tabs"
+      ><ElTabPane label="工具开发指引" name="development"
+        ><div class="tab-content"
+          ><header
       ><div><span class="eyebrow">DEVELOPER DOCUMENTATION</span><h1>开发者文档</h1><p>从工具包开发到 API 接入，在一个页面完成查阅。</p></div
       ><ElButton type="primary" @click="$router.push('/tooldeck/tools')">前往上传工具包</ElButton></header
     ><div class="runtime-strip"><span>支持的运行环境</span><b>PHP 8.0–8.3</b><b>Node / JS 20–23</b><b>Python 3.10–3.12</b><b>Go 1.22–1.24</b></div
@@ -10,7 +13,7 @@
         ><a v-for="(item, i) in sections" :key="item" :href="'#step-' + i" @click.prevent="jump(i)"
           ><small>{{ String(i + 1).padStart(2, '0') }}</small
           >{{ item }}</a
-        ><a href="#api-auth" @click.prevent="jumpTo('api-auth')"><small>API</small>API 调用指南</a><RouterLink class="api-link" to="/tooldeck/credentials">管理 API Key ↗</RouterLink></aside
+        ></aside
       ><main
         ><section id="step-0"
           ><div class="step-label">STEP 01</div><h2>准备目录与输入输出</h2
@@ -49,7 +52,8 @@ Node: process.env.IMAGE_API_KEY
 Python: os.environ['IMAGE_API_KEY']
 Go: os.Getenv("IMAGE_API_KEY")</pre
           ><p>配置加密保存、不回显，缺失必填项时不能运行。日志会遮盖配置原值；代码仍应避免把凭证输出到结果、文件或发送给非预期第三方。</p></section
-        ><section id="step-8"><div class="step-label">REFERENCE</div><h2>配置参数速查</h2><ConfigReference /></section><section id="step-9"><div class="step-label">STREAMING</div><h2>SSE 流式输出</h2><StreamGuide /></section><section id="api-auth" class="merged-api"><div class="step-label">API REFERENCE</div><h2>API 调用指南</h2><ApiGuide embedded /></section></main></div
+        ><section id="step-8"><div class="step-label">REFERENCE</div><h2>配置参数速查</h2><ConfigReference /></section><section id="step-9"><div class="step-label">STREAMING</div><h2>SSE 流式输出</h2><StreamGuide /></section></main></div></div></ElTabPane
+      ><ElTabPane label="API 指南" name="api"><div class="tab-content"><ApiGuide /></div></ElTabPane></ElTabs
   ></article>
 </template>
 <script setup lang="ts">
@@ -57,7 +61,13 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
   import FileReference from '../components/FileReference.vue'
   import ConfigReference from '../components/ConfigReference.vue'
   import ApiGuide from '../api-guide/index.vue'
+  import { ref, watch } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   defineOptions({ name: 'Guide' })
+  const route = useRoute()
+  const router = useRouter()
+  const activeTab = ref(route.query.tab === 'api' ? 'api' : 'development')
+  watch(activeTab, (tab) => router.replace({ query: tab === 'api' ? { tab: 'api' } : {} }))
   const sections = ['准备目录与输入输出', '描述工具和动态表单', '图片和文件', '第三方服务与依赖', '上传选项与通知', 'API 调用概览', '构建环境与日志', '环境变量与凭证', '配置参数速查', 'SSE 流式输出']
   const templates = [
     { label: 'PHP 8.1 + Composer', file: 'blank-php.zip' },
@@ -68,9 +78,6 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
   ]
   function jump(i: number) {
     document.getElementById('step-' + i)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-  function jumpTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   const source = `# main.py
 import sys, json
@@ -233,12 +240,6 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     color: #98a1b6;
     font-size: 11px;
   }
-  aside .api-link {
-    margin-top: 20px;
-    border-top: 1px solid var(--el-border-color-lighter);
-    padding-top: 20px;
-    color: #5269ef;
-  }
   section {
     padding: 30px 32px;
     margin-bottom: 24px;
@@ -248,13 +249,17 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     scroll-margin-top: 24px;
     min-width: 0;
   }
-  .merged-api {
-    padding: 0;
-    border: 0;
-    background: transparent;
+  .document-tabs :deep(.el-tabs__header) {
+    margin-bottom: 24px;
   }
-  .merged-api > h2 {
-    margin-bottom: 20px;
+  .document-tabs :deep(.el-tabs__item) {
+    height: 48px;
+    padding: 0 24px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .tab-content {
+    min-width: 0;
   }
   h2 {
     font-size: 21px;
@@ -309,8 +314,7 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
       gap: 6px;
       padding: 0;
     }
-    .nav-label,
-    aside .api-link {
+    .nav-label {
       display: none;
     }
     aside a {

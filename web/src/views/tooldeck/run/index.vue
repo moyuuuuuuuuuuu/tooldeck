@@ -36,7 +36,7 @@
           ><ElTabPane v-if="user.isLogin && tool.api_enabled !== false" label="API 参数" name="api"
             ><div class="api-title"
               ><div><span>POST</span><h3>执行此工具</h3></div
-              ><ElButton text type="primary" @click="router.push('/tooldeck/guide#api-auth')">查看通用 API 指南 →</ElButton></div
+              ><ElButton text type="primary" @click="router.push('/tooldeck/guide?tab=api')">查看通用 API 指南 →</ElButton></div
             ><label class="endpoint-label">请求地址</label
             ><div class="endpoint"
               ><code>{{ apiEndpoint }}</code
