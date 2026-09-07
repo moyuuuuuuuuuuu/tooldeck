@@ -1,0 +1,7 @@
+FROM docker:28-cli
+RUN apk add --no-cache ca-certificates
+COPY bin/tooldeck /usr/local/bin/tooldeck
+COPY web/dist /web
+ENV TOOLDECK_DATA_DIR=/data TOOLDECK_WEB_DIR=/web
+EXPOSE 8080
+ENTRYPOINT ["tooldeck"]

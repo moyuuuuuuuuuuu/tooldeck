@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "name": "echo-php",
+  "title": "PHP 文本工具",
+  "description": "验证语言运行环境与 JSON 输入输出。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "entrypoint": "main.php",
+  "execution": {
+    "mode": "sync",
+    "timeout_seconds": 30,
+    "memory_mb": 256
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "title": "输入文本",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "ui_schema": {
+    "text": {
+      "widget": "textarea",
+      "placeholder": "输入一段文字"
+    }
+  },
+  "output_schema": {
+    "type": "json"
+  }
+}

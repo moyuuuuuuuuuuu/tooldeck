@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "name": "image-form-demo",
+  "title": "图片工具体验",
+  "description": "演示提示词、参考图上传与图片结果展示，生成本地色彩图，不调用 AI 服务。",
+  "version": "1.0.0",
+  "runtime": "python",
+  "entrypoint": "main.py",
+  "execution": {
+    "mode": "async",
+    "timeout_seconds": 30,
+    "memory_mb": 256
+  },
+  "network": {
+    "enabled": false,
+    "allowed_hosts": []
+  },
+  "secrets": [],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "title": "提示词",
+        "minLength": 1
+      },
+      "reference_images": {
+        "type": "array",
+        "title": "参考图",
+        "items": {
+          "type": "string",
+          "format": "tooldeck-file"
+        },
+        "maxItems": 4
+      },
+      "aspect_ratio": {
+        "type": "string",
+        "title": "图片比例",
+        "enum": [
+          "1:1",
+          "16:9",
+          "9:16"
+        ],
+        "default": "1:1"
+      }
+    },
+    "required": [
+      "prompt"
+    ]
+  },
+  "ui_schema": {
+    "prompt": {
+      "widget": "textarea",
+      "placeholder": "输入灵感，生成一张色彩图",
+      "rows": 5,
+      "order": 0
+    },
+    "reference_images": {
+      "widget": "image-upload",
+      "accept": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "max_file_size_mb": 10,
+      "order": 1
+    },
+    "aspect_ratio": {
+      "widget": "radio",
+      "order": 2
+    }
+  },
+  "output_schema": {
+    "type": "image-gallery"
+  }
+}

@@ -1,0 +1,24 @@
+name: tooldeck
+services:
+  platform:
+    build: .
+    image: tooldeck:dev
+    restart: unless-stopped
+    ports:
+      - "${TOOLDECK_PORT:-18088}:8080"
+    env_file: .env
+    environment:
+      TOOLDECK_DATA_VOLUME: tooldeck_data
+    volumes:
+      - tooldeck_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 512m
+    cpu_shares: 512
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+volumes:
+  tooldeck_data:
+    name: tooldeck_data
