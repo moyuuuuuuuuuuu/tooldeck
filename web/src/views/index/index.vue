@@ -1,22 +1,232 @@
-<template><div class="site"><header class="site-header"><RouterLink class="brand" to="/tooldeck/tools"><span class="brand-icon">T</span>ToolDeck</RouterLink><nav><RouterLink to="/tooldeck/tools">工具广场</RouterLink><RouterLink to="/tooldeck/my-tools">我的工具</RouterLink><RouterLink to="/tooldeck/playground">在线调试</RouterLink><RouterLink to="/tooldeck/runs">运行记录</RouterLink><RouterLink to="/tooldeck/credentials">访问凭证</RouterLink><RouterLink to="/tooldeck/api-guide">API 文档</RouterLink><RouterLink to="/tooldeck/guide">开发文档</RouterLink></nav><ThemeSwitch/><Notifications/><ElDropdown @command="navigate"><button type="button" class="account-button" aria-label="账号菜单"><UserAvatar :size="32"/><span class="account-name">{{ user.info.nickname || user.info.username }}</span><svg class="account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button><template #dropdown><ElDropdownMenu><ElDropdownItem command="/tooldeck/profile">个人中心</ElDropdownItem><ElDropdownItem v-if="admin" divided command="/tooldeck/review">总后台 · 工具审核</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/nodes">站点管理 · 执行节点</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/credentials">站点管理 · 服务密钥</ElDropdownItem><ElDropdownItem divided command="logout">退出登录</ElDropdownItem></ElDropdownMenu></template></ElDropdown></header><main class="site-content"><RouterView/></main><footer>ToolDeck · 让好用的工具，随手可得。</footer></div></template>
+<template>
+  <div class="site"
+    ><header class="site-header"
+      ><RouterLink class="brand" to="/tooldeck/tools"><span class="brand-icon">T</span>ToolDeck</RouterLink><nav><RouterLink to="/tooldeck/tools">工具广场</RouterLink><RouterLink to="/tooldeck/my-tools">我的工具</RouterLink><RouterLink to="/tooldeck/playground">在线调试</RouterLink><RouterLink to="/tooldeck/runs">运行记录</RouterLink><RouterLink to="/tooldeck/credentials">访问凭证</RouterLink><RouterLink to="/tooldeck/guide">开发者文档</RouterLink></nav
+      ><ThemeSwitch /><Notifications /><ElDropdown @command="navigate"
+        ><button type="button" class="account-button" aria-label="账号菜单"
+          ><UserAvatar :size="32" /><span class="account-name">{{ user.info.nickname || user.info.username }}</span
+          ><svg class="account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></button
+        ><template #dropdown
+          ><ElDropdownMenu><ElDropdownItem command="/tooldeck/profile">个人中心</ElDropdownItem><ElDropdownItem v-if="admin" divided command="/tooldeck/review">总后台 · 工具审核</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/nodes">站点管理 · 执行节点</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/credentials">站点管理 · 服务密钥</ElDropdownItem><ElDropdownItem divided command="logout">退出登录</ElDropdownItem></ElDropdownMenu></template
+        ></ElDropdown
+      ></header
+    ><main class="site-content"><RouterView /></main><footer>ToolDeck · 让好用的工具，随手可得。</footer></div
+  >
+</template>
 <script setup lang="ts">
-import {computed} from 'vue'
-import ThemeSwitch from '../tooldeck/components/ThemeSwitch.vue'
-import Notifications from '../tooldeck/components/Notifications.vue'
-import UserAvatar from '../tooldeck/components/UserAvatar.vue'
-import {useRouter} from 'vue-router'
-import {useUserStore} from '@/store/modules/user'
-defineOptions({name:'AppLayout'})
-const user=useUserStore(),router=useRouter(),admin=computed(()=>user.info.roles?.includes('R_SUPER'))
-function navigate(path:string){if(path==='logout')user.logOut();else router.push(path)}
+  import { computed } from 'vue'
+  import ThemeSwitch from '../tooldeck/components/ThemeSwitch.vue'
+  import Notifications from '../tooldeck/components/Notifications.vue'
+  import UserAvatar from '../tooldeck/components/UserAvatar.vue'
+  import { useRouter } from 'vue-router'
+  import { useUserStore } from '@/store/modules/user'
+  defineOptions({ name: 'AppLayout' })
+  const user = useUserStore(),
+    router = useRouter(),
+    admin = computed(() => user.info.roles?.includes('R_SUPER'))
+  function navigate(path: string) {
+    if (path === 'logout') user.logOut()
+    else router.push(path)
+  }
 </script>
-<style scoped>.account-button{height:46px;padding:5px 12px 5px 5px}.site{min-height:100vh;background:#fcfcfe;color:var(--el-text-color-primary)}.site-header{height:80px;display:flex;align-items:center;gap:56px;padding:0 max(24px,calc((100vw - 1240px)/2));background:var(--el-bg-color);border-bottom:1px solid var(--el-border-color-lighter)}.brand{display:flex;align-items:center;gap:10px;font-size:23px;font-weight:800;letter-spacing:-.7px;color:inherit;text-decoration:none}.brand-icon{display:grid;place-items:center;background:#5269ef;color:white;border-radius:10px;width:35px;height:35px;font-size:22px}.site-header nav{display:flex;gap:30px;flex:1}.site-header nav a{color:var(--el-text-color-secondary);font-size:15px;text-decoration:none;padding:28px 0;white-space:nowrap}.site-header nav a.router-link-active{color:#5269ef;font-weight:600}.site-content{max-width:1240px;padding:40px 24px 70px;margin:auto;min-height:calc(100vh - 140px)}footer{text-align:center;color:var(--el-text-color-secondary);font-size:12px;padding:20px}@media(max-width:1100px){.site-header{height:auto;flex-wrap:wrap;padding:18px 20px;gap:18px;justify-content:space-between}.site-header nav{order:3;flex-basis:100%;gap:26px}.site-header nav a{padding:8px 0}.site-content{padding:26px 16px}.brand{font-size:20px}}</style>
-
-
-<style scoped>.site-header{gap:30px;box-shadow:0 4px 24px #17255404}.site-header nav{gap:8px}.site-header nav a{padding:10px 14px;border-radius:9px;font-size:14px}.site-header nav a.router-link-active{background:#eef2ff;color:#4d61d6}.site-content{padding-top:32px}.brand-icon{box-shadow:0 4px 12px #5269ef25}.site-content :deep(.el-button){border-radius:9px}.site-content :deep(.el-dialog){border-radius:18px;padding:26px}.site-content :deep(.el-table){--el-table-header-bg-color:var(--el-fill-color-light);border-radius:12px}.site-content :deep(.el-form-item){margin-bottom:24px}@media(max-width:1100px){.site-header nav{overflow-x:auto}.site-header nav a{padding:9px 12px}}</style>
-
-<style scoped>:global(html.dark) .site{background:var(--el-bg-color-page)}</style>
+<style scoped>
+  .account-button {
+    height: 46px;
+    padding: 5px 12px 5px 5px;
+  }
+  .site {
+    min-height: 100vh;
+    background: #fcfcfe;
+    color: var(--el-text-color-primary);
+  }
+  .site-header {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    gap: 56px;
+    padding: 0 max(24px, calc((100vw - 1240px) / 2));
+    background: var(--el-bg-color);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -0.7px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .brand-icon {
+    display: grid;
+    place-items: center;
+    background: #5269ef;
+    color: white;
+    border-radius: 10px;
+    width: 35px;
+    height: 35px;
+    font-size: 22px;
+  }
+  .site-header nav {
+    display: flex;
+    gap: 30px;
+    flex: 1;
+  }
+  .site-header nav a {
+    color: var(--el-text-color-secondary);
+    font-size: 15px;
+    text-decoration: none;
+    padding: 28px 0;
+    white-space: nowrap;
+  }
+  .site-header nav a.router-link-active {
+    color: #5269ef;
+    font-weight: 600;
+  }
+  .site-content {
+    max-width: 1240px;
+    padding: 40px 24px 70px;
+    margin: auto;
+    min-height: calc(100vh - 140px);
+  }
+  footer {
+    text-align: center;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    padding: 20px;
+  }
+  @media (max-width: 1100px) {
+    .site-header {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 18px 20px;
+      gap: 18px;
+      justify-content: space-between;
+    }
+    .site-header nav {
+      order: 3;
+      flex-basis: 100%;
+      gap: 26px;
+    }
+    .site-header nav a {
+      padding: 8px 0;
+    }
+    .site-content {
+      padding: 26px 16px;
+    }
+    .brand {
+      font-size: 20px;
+    }
+  }
+</style>
 
 <style scoped>
-.site-header .account-button{display:inline-flex;align-items:center;gap:10px;height:44px;max-width:210px;padding:6px 9px 6px 6px;border:0;border-radius:10px;background:transparent;color:var(--el-text-color-primary);font:inherit;cursor:pointer;transition:background .16s,color .16s;outline:none}.site-header .account-button:hover,.site-header .account-button[aria-expanded="true"]{background:var(--el-fill-color-light)}.site-header .account-button:focus-visible{outline:2px solid var(--el-color-primary-light-5);outline-offset:3px}.account-name{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}.account-chevron{flex-shrink:0;color:var(--el-text-color-placeholder);transition:transform .16s}.account-button[aria-expanded="true"] .account-chevron{transform:rotate(180deg)}.account-button :deep(.letter-avatar){background:var(--el-color-primary-light-9);color:var(--el-color-primary);font-size:14px;border-radius:10px}@media(max-width:600px){.account-name{max-width:90px}}
+  .site-header {
+    gap: 30px;
+    box-shadow: 0 4px 24px #17255404;
+  }
+  .site-header nav {
+    gap: 8px;
+  }
+  .site-header nav a {
+    padding: 10px 14px;
+    border-radius: 9px;
+    font-size: 14px;
+  }
+  .site-header nav a.router-link-active {
+    background: #eef2ff;
+    color: #4d61d6;
+  }
+  .site-content {
+    padding-top: 32px;
+  }
+  .brand-icon {
+    box-shadow: 0 4px 12px #5269ef25;
+  }
+  .site-content :deep(.el-button) {
+    border-radius: 9px;
+  }
+  .site-content :deep(.el-dialog) {
+    border-radius: 18px;
+    padding: 26px;
+  }
+  .site-content :deep(.el-table) {
+    --el-table-header-bg-color: var(--el-fill-color-light);
+    border-radius: 12px;
+  }
+  .site-content :deep(.el-form-item) {
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1100px) {
+    .site-header nav {
+      overflow-x: auto;
+    }
+    .site-header nav a {
+      padding: 9px 12px;
+    }
+  }
+</style>
+
+<style scoped>
+  :global(html.dark) .site {
+    background: var(--el-bg-color-page);
+  }
+</style>
+
+<style scoped>
+  .site-header .account-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    max-width: 210px;
+    padding: 6px 9px 6px 6px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--el-text-color-primary);
+    font: inherit;
+    cursor: pointer;
+    transition:
+      background 0.16s,
+      color 0.16s;
+    outline: none;
+  }
+  .site-header .account-button:hover,
+  .site-header .account-button[aria-expanded='true'] {
+    background: var(--el-fill-color-light);
+  }
+  .site-header .account-button:focus-visible {
+    outline: 2px solid var(--el-color-primary-light-5);
+    outline-offset: 3px;
+  }
+  .account-name {
+    font-size: 14px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 130px;
+  }
+  .account-chevron {
+    flex-shrink: 0;
+    color: var(--el-text-color-placeholder);
+    transition: transform 0.16s;
+  }
+  .account-button[aria-expanded='true'] .account-chevron {
+    transform: rotate(180deg);
+  }
+  .account-button :deep(.letter-avatar) {
+    background: var(--el-color-primary-light-9);
+    color: var(--el-color-primary);
+    font-size: 14px;
+    border-radius: 10px;
+  }
+  @media (max-width: 600px) {
+    .account-name {
+      max-width: 90px;
+    }
+  }
 </style>
