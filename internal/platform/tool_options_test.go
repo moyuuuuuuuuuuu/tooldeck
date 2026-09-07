@@ -136,6 +136,9 @@ func TestUploadManifestDefaultsAndExplicitOverrides(t *testing.T) {
 	base = strings.Replace(base, `"runtime":"python"`, `"runtime":"python","runtime_version":"3.11","build_command":"python -m compileall ."`, 1)
 	base = strings.Replace(base, `"enabled":false,"allowed_hosts":[]`, `"enabled":true,"allowed_hosts":["manifest.example.com"]`, 1)
 	tool := upload(base, nil)
+	if tool.BuildStatus != "pending" || tool.ReviewStatus != "draft" {
+		t.Fatalf("new upload must wait for author build and submission: %+v", tool)
+	}
 	if tool.Manifest.RuntimeVersion != "3.11" || tool.Manifest.BuildCommand != "python -m compileall ." || strings.Join(tool.Manifest.Network.AllowedHosts, ",") != "manifest.example.com" {
 		t.Fatalf("manifest values were not preserved: %+v", tool.Manifest)
 	}

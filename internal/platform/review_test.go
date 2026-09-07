@@ -17,6 +17,12 @@ func TestReviewVisibilityAndSettings(t *testing.T) {
 		t.Fatal("pending visibility incorrect")
 	}
 	s.store.State.Tools[tool.ID] = tool
+	s.store.State.Users["alice"] = User{ID: "alice", Username: "alice@example.com", Nickname: "Alice", Email: "alice@example.com", EmailVerified: true}
+	w := httptest.NewRecorder()
+	s.reviewEndpoint(w, httptest.NewRequest("GET", "/", nil), admin, []string{"reviews"})
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"nickname":"Alice"`) || strings.Contains(w.Body.String(), "password_hash") {
+		t.Fatal("review list author information is missing or unsafe", w.Body.String())
+	}
 	call := func(p Principal, path, body string, parts []string, want int) {
 		t.Helper()
 		w := httptest.NewRecorder()
@@ -26,6 +32,11 @@ func TestReviewVisibilityAndSettings(t *testing.T) {
 		}
 	}
 	call(other, "/", `{"status":"approved"}`, []string{"reviews", tool.ID}, 403)
+	draft := tool
+	draft.ID = "draft"
+	draft.ReviewStatus = "draft"
+	s.store.State.Tools[draft.ID] = draft
+	call(admin, "/", `{"status":"approved"}`, []string{"reviews", draft.ID}, 409)
 	call(admin, "/", `{"status":"approved"}`, []string{"reviews", tool.ID}, 200)
 	if !canUseTool(other, s.store.State.Tools[tool.ID]) {
 		t.Fatal("approved public tool hidden")

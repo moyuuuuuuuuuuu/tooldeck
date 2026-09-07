@@ -468,11 +468,7 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		return
 	}
 	m.RuntimeVersion, _ = runtimeVersion(m)
-	status := "approved"
-	if public && (s.store.State.ReviewRequired == nil || *s.store.State.ReviewRequired) {
-		status = "pending"
-	}
-	tool := Tool{BuildStatus: "queued", Public: &public, ReviewStatus: status, ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled, Notify: notify}
+	tool := Tool{BuildStatus: "pending", Public: &public, ReviewStatus: "draft", ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled, Notify: notify}
 	s.store.State.Tools[id] = tool
 	if e = s.store.save(); e != nil {
 		delete(s.store.State.Tools, id)

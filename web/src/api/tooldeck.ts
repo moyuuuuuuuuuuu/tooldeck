@@ -9,6 +9,7 @@ export interface Field {
 export interface Tool {
  build_status?:string;build_log?:string;build_error?:string;
  withdrawn?:boolean; created_at?:string; public?:boolean; review_status?:string;review_note?:string;api_enabled?: boolean; notify_result?:boolean; owner?:string
+ author?:{id:string;username:string;nickname:string;email:string;email_verified:boolean;bio:string;created_at:string}
   id: string
   manifest: { env?: {name:string;description?:string;required?:boolean;sensitive?:boolean}[]; runtime_version?:string;name: string; title: string; version: string; description: string; runtime: string
     execution: {stream?:boolean;mode: string; timeout_seconds: number; memory_mb: number}

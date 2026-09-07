@@ -3,10 +3,22 @@ package platform
 import (
 	"archive/tar"
 	"bytes"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestAuthorStartsPendingBuild(t *testing.T) {
+	s := testServer(t)
+	tool := Tool{ID: "pending", Owner: "alice", BuildStatus: "pending"}
+	s.store.State.Tools[tool.ID] = tool
+	w := httptest.NewRecorder()
+	s.buildEndpoint(w, httptest.NewRequest("POST", "/", nil), Principal{UserID: "alice", Session: true}, tool.ID)
+	if w.Code != 200 || s.store.State.Tools[tool.ID].BuildStatus != "queued" {
+		t.Fatalf("pending build was not queued: %d %s", w.Code, w.Body.String())
+	}
+}
 
 func TestBuildArtifactExtraction(t *testing.T) {
 	for _, unsafe := range []bool{false, true} {

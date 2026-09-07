@@ -55,3 +55,26 @@ func TestPublicationLifecycle(t *testing.T) {
 		t.Fatal("stale review accepted", w.Code)
 	}
 }
+
+func TestDraftRequiresSuccessfulBuildBeforeSubmission(t *testing.T) {
+	s := testServer(t)
+	owner := Principal{UserID: "alice", Session: true, Tools: []string{"*"}}
+	yes := true
+	tool := Tool{ID: "draft", Owner: "alice", Public: &yes, BuildStatus: "pending", ReviewStatus: "draft", Manifest: Manifest{Name: "demo"}}
+	s.store.State.Tools[tool.ID] = tool
+	call := func(path string, body string, want int) {
+		w := httptest.NewRecorder()
+		s.publication(w, httptest.NewRequest("POST", path, strings.NewReader(body)), owner, tool.ID)
+		if w.Code != want {
+			t.Fatalf("%d %s", w.Code, w.Body.String())
+		}
+	}
+	call("/", `{"action":"submit"}`, 409)
+	tool = s.store.State.Tools[tool.ID]
+	tool.BuildStatus = "ready"
+	s.store.State.Tools[tool.ID] = tool
+	call("/", `{"action":"submit"}`, 200)
+	if s.store.State.Tools[tool.ID].ReviewStatus != "pending" {
+		t.Fatal("successful build was not submitted for review")
+	}
+}

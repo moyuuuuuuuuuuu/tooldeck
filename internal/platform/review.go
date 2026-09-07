@@ -90,6 +90,9 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 		list := []Tool{}
 		for _, t := range s.store.State.Tools {
 			if !t.Withdrawn && (t.Public == nil || *t.Public) {
+				if u, ok := s.store.State.Users[toolOwner(t)]; ok {
+					t.Author = &ToolAuthor{ID: u.ID, Username: u.Username, Nickname: u.Nickname, Email: u.Email, EmailVerified: u.EmailVerified, Bio: u.Bio, Created: u.Created}
+				}
 				list = append(list, t)
 			}
 		}
@@ -124,6 +127,10 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 		}
 		if t.Withdrawn {
 			fail(w, 409, "工具已下架，请等待作者重新提交")
+			return
+		}
+		if t.ReviewStatus == "draft" {
+			fail(w, 409, "作者提交审核后才能进行审核")
 			return
 		}
 		if t.Public != nil && !*t.Public {

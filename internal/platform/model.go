@@ -69,22 +69,32 @@ type Manifest struct {
 	} `json:"output_schema"`
 }
 type Tool struct {
-	Withdrawn    bool      `json:"withdrawn,omitempty"`
-	Playground   bool      `json:"playground,omitempty"`
-	BuildStatus  string    `json:"build_status,omitempty"`
-	BuildLog     string    `json:"build_log,omitempty"`
-	BuildError   string    `json:"build_error,omitempty"`
-	BuildImage   string    `json:"build_image,omitempty"`
-	Artifact     string    `json:"artifact,omitempty"`
-	Public       *bool     `json:"public,omitempty"`
-	ReviewStatus string    `json:"review_status,omitempty"`
-	ReviewNote   string    `json:"review_note,omitempty"`
-	Owner        string    `json:"owner,omitempty"`
-	APIEnabled   *bool     `json:"api_enabled,omitempty"`
-	Notify       bool      `json:"notify_result"`
-	ID           string    `json:"id"`
-	Manifest     Manifest  `json:"manifest"`
-	Created      time.Time `json:"created_at"`
+	Withdrawn    bool        `json:"withdrawn,omitempty"`
+	Playground   bool        `json:"playground,omitempty"`
+	BuildStatus  string      `json:"build_status,omitempty"`
+	BuildLog     string      `json:"build_log,omitempty"`
+	BuildError   string      `json:"build_error,omitempty"`
+	BuildImage   string      `json:"build_image,omitempty"`
+	Artifact     string      `json:"artifact,omitempty"`
+	Public       *bool       `json:"public,omitempty"`
+	ReviewStatus string      `json:"review_status,omitempty"`
+	ReviewNote   string      `json:"review_note,omitempty"`
+	Owner        string      `json:"owner,omitempty"`
+	Author       *ToolAuthor `json:"author,omitempty"`
+	APIEnabled   *bool       `json:"api_enabled,omitempty"`
+	Notify       bool        `json:"notify_result"`
+	ID           string      `json:"id"`
+	Manifest     Manifest    `json:"manifest"`
+	Created      time.Time   `json:"created_at"`
+}
+type ToolAuthor struct {
+	ID            string    `json:"id"`
+	Username      string    `json:"username"`
+	Nickname      string    `json:"nickname"`
+	Email         string    `json:"email"`
+	EmailVerified bool      `json:"email_verified"`
+	Bio           string    `json:"bio"`
+	Created       time.Time `json:"created_at"`
 }
 type Run struct {
 	Events           []StreamEvent  `json:"stream_events,omitempty"`

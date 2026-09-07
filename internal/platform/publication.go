@@ -42,7 +42,7 @@ func (s *Server) publication(w http.ResponseWriter, r *http.Request, p Principal
 		fail(w, 400, e)
 		return
 	}
-	if b.Action != "withdraw" && b.Action != "resubmit" {
+	if b.Action != "withdraw" && b.Action != "submit" && b.Action != "resubmit" {
 		fail(w, 422, "操作无效")
 		return
 	}
@@ -61,8 +61,8 @@ func (s *Server) publication(w http.ResponseWriter, r *http.Request, p Principal
 	if b.Action == "withdraw" {
 		t.Withdrawn = true
 	} else {
-		if !t.Withdrawn && t.ReviewStatus != "rejected" {
-			fail(w, 409, "当前状态无需重新提交")
+		if !t.Withdrawn && t.ReviewStatus != "draft" && t.ReviewStatus != "rejected" {
+			fail(w, 409, "当前状态不可提交")
 			return
 		}
 		if t.BuildStatus != "" && t.BuildStatus != "ready" {

@@ -28,8 +28,8 @@ func (s *Server) buildEndpoint(w http.ResponseWriter, r *http.Request, p Princip
 		return
 	}
 	if r.Method == "POST" {
-		if t.BuildStatus != "failed" {
-			fail(w, 409, "仅失败的构建可以重试，发布版本不可重新构建")
+		if t.BuildStatus != "pending" && t.BuildStatus != "failed" {
+			fail(w, 409, "仅待构建或失败的版本可以发起构建")
 			return
 		}
 		old := t
