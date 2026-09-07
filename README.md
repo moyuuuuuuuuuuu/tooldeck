@@ -159,27 +159,26 @@ QQ SMTP 默认使用 `smtp.qq.com:465` 和 TLS，填写：
 
 ### 群晖 NAS 使用 Git 更新
 
-生产源码建议克隆到 `/volume1/docker/tooldeck/repository`，将生产配置保留在外层 `/volume1/docker/tooldeck/.env`，并在源码目录创建 `.env` 软链接。持久化数据仍位于 `/volume1/docker/tooldeck/data`，不会被 Git 更新覆盖。
+生产源码直接克隆到 `/volume1/docker/tooldeck`。生产配置 `/volume1/docker/tooldeck/.env` 与持久化目录 `/volume1/docker/tooldeck/data` 均已被 Git 忽略，不会被代码更新覆盖。
 
 首次初始化（使用 `moyuu` 身份）：
 
 ```bash
-cd /volume1/docker/tooldeck
-/usr/local/bin/git clone --branch main --single-branch https://github.com/moyuuuuuuuuuuu/tooldeck.git repository
-ln -s ../.env repository/.env
+cd /volume1/docker
+/usr/local/bin/git clone --branch main --single-branch https://github.com/moyuuuuuuuuuuu/tooldeck.git tooldeck
 ```
 
 后续更新先使用 `moyuu` 身份拉取代码：
 
 ```bash
-cd /volume1/docker/tooldeck/repository
+cd /volume1/docker/tooldeck
 /usr/local/bin/git pull --ff-only
 ```
 
 再在 root 终端从源码构建并重建服务：
 
 ```bash
-cd /volume1/docker/tooldeck/repository
+cd /volume1/docker/tooldeck
 /usr/local/bin/docker compose -f deploy/compose.synology.yaml up -d --build
 ```
 
