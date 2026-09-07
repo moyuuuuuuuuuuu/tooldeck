@@ -340,6 +340,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 		jsonResponse(w, 200, map[string]any{})
 	case "/api/core/system/menu":
 		children := []any{menu("my-tools", "MyTools", "我上传的工具", "ri:folder-user-line"), menu("tools", "Tools", "发现工具", "ri:apps-line"), menu("playground", "Playground", "在线运行", "ri:code-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("guide", "Guide", "工具开发指引", "ri:book-line"), menu("runs", "Runs", "我的记录", "ri:history-line"), menu("credentials", "Credentials", "API 接入", "ri:key-2-line")}
+		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
 			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))
 		}
@@ -350,6 +351,9 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 }
 func menu(path, name, title, icon string) any {
 	return map[string]any{"path": "/tooldeck/" + path, "name": name, "component": "/tooldeck/" + path + "/index", "meta": map[string]any{"title": title, "icon": icon, "keepAlive": false}}
+}
+func hiddenMenu(path, name, title, activePath string) any {
+	return map[string]any{"path": "/tooldeck/" + path, "name": name, "component": "/tooldeck/run/index", "meta": map[string]any{"title": title, "isHide": true, "isHideTab": true, "activePath": activePath, "keepAlive": false}}
 }
 func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal) {
 	r.Body = http.MaxBytesReader(w, r.Body, 65<<20)
