@@ -116,14 +116,16 @@ type Run struct {
 	Duration         int64          `json:"duration_ms"`
 }
 type File struct {
-	Storage   string `json:"storage,omitempty"`
-	ObjectKey string `json:"object_key,omitempty"`
-	ID        string `json:"file_id"`
-	Name      string `json:"name"`
-	MIME      string `json:"mime"`
-	Size      int64  `json:"size"`
-	Owner     string `json:"-"`
-	RunID     string `json:"run_id,omitempty"`
+	Storage            string    `json:"storage,omitempty"`
+	ObjectKey          string    `json:"object_key,omitempty"`
+	ID                 string    `json:"file_id"`
+	Name               string    `json:"name"`
+	MIME               string    `json:"mime"`
+	Size               int64     `json:"size"`
+	Owner              string    `json:"-"`
+	RunID              string    `json:"run_id,omitempty"`
+	ExpiresAt          time.Time `json:"expires_at,omitempty"`
+	DownloadsRemaining int       `json:"downloads_remaining,omitempty"`
 }
 
 // FileOwner is persisted separately: API serialization never exposes credential identities.

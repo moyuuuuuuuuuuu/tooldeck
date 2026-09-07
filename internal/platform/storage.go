@@ -63,6 +63,9 @@ func (b *BOSStore) open(ctx context.Context, f File) (io.ReadCloser, error) {
 	}
 	return result.Body, nil
 }
+func (b *BOSStore) delete(f File) error {
+	return b.Client.DeleteObject(b.Bucket, f.ObjectKey)
+}
 func (s *Server) persistFile(ctx context.Context, f *File, source string) error {
 	if s.bos != nil {
 		return s.bos.put(ctx, f, source)
@@ -82,6 +85,19 @@ func (s *Server) openFile(ctx context.Context, f File) (io.ReadCloser, error) {
 		return s.bos.open(ctx, f)
 	}
 	return os.Open(filepath.Join(s.store.Root, "files", f.ID))
+}
+func (s *Server) deleteStoredFile(f File) error {
+	if f.Storage == "bos" {
+		if s.bos == nil {
+			return errors.New("BOS storage is not configured")
+		}
+		return s.bos.delete(f)
+	}
+	e := os.Remove(filepath.Join(s.store.Root, "files", f.ID))
+	if errors.Is(e, os.ErrNotExist) {
+		return nil
+	}
+	return e
 }
 func (s *Server) fetchFile(ctx context.Context, f File, dest string) error {
 	src, e := s.openFile(ctx, f)

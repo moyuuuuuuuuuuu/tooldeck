@@ -16,7 +16,7 @@ export interface Tool {
     input_schema: Field; ui_schema: Record<string, any>; output_schema: {type: string}
     network: {enabled: boolean; allowed_hosts: string[]}; secrets: string[] }
 }
-export interface Artifact { file_id: string; name: string; mime: string; size: number }
+export interface Artifact { file_id: string; name: string; mime: string; size: number; expires_at?: string; downloads_remaining?: number }
 export interface Run { run_id: string; tool_id: string; status: string; input: Record<string, any>; result: any; error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
 export const toolApiPrefix = () => useUserStore().isLogin ? '/v1' : '/public'
 export const td = {

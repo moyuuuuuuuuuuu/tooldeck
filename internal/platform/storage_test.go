@@ -15,6 +15,7 @@ import (
 func TestBOSUsesSignedRequestsAndRoundTripsFile(t *testing.T) {
 	var stored []byte
 	var requestPath string
+	var deleted bool
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "bce-auth-v1/") {
 			t.Error("request is not signed")
@@ -32,6 +33,14 @@ func TestBOSUsesSignedRequestsAndRoundTripsFile(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "image/png")
 			w.Write(stored)
+			return
+		}
+		if r.Method == "DELETE" {
+			if r.URL.Path != requestPath {
+				t.Error("delete object key changed")
+			}
+			deleted = true
+			w.WriteHeader(204)
 			return
 		}
 		http.Error(w, "unexpected method", 400)
@@ -59,6 +68,9 @@ func TestBOSUsesSignedRequestsAndRoundTripsFile(t *testing.T) {
 	got, _ := io.ReadAll(body)
 	if string(got) != "test-image-content" {
 		t.Fatal(string(got))
+	}
+	if e = storage.delete(file); e != nil || !deleted {
+		t.Fatal("BOS object was not deleted", e)
 	}
 }
 func TestBOSConfigurationFailsClosed(t *testing.T) {

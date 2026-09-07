@@ -80,6 +80,7 @@ func (s *Server) Start(ctx context.Context) {
 	go s.worker(ctx)
 	go s.notificationWorker(ctx)
 	go s.buildWorker(ctx)
+	go s.artifactCleanupWorker(ctx)
 }
 func jsonResponse(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -131,6 +132,10 @@ func (s *Server) Handler() http.Handler {
 		}
 		if r.URL.Path == "/api/core/register" && r.Method == "POST" {
 			s.register(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/public/artifacts/") && r.Method == "GET" {
+			s.downloadSignedArtifact(w, r, strings.TrimPrefix(r.URL.Path, "/api/public/artifacts/"))
 			return
 		}
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
@@ -738,18 +743,25 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request, p Principal, i
 		fail(w, 404, "file unavailable")
 		return
 	}
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	w.Header().Set("Content-Type", f.MIME)
-	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(f.Name))
-	w.Header().Set("Cache-Control", "no-store")
+	if f.RunID != "" {
+		s.serveRunArtifact(w, r, f)
+		return
+	}
+	s.writeDownloadHeaders(w, f)
 	body, e := s.openFile(r.Context(), f)
 	if e != nil {
 		fail(w, 502, "object storage download failed")
 		return
 	}
 	defer body.Close()
-	w.Header().Set("Content-Length", fmt.Sprint(f.Size))
 	_, _ = io.Copy(w, body)
+}
+func (s *Server) writeDownloadHeaders(w http.ResponseWriter, f File) {
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	w.Header().Set("Content-Type", f.MIME)
+	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(f.Name))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Length", fmt.Sprint(f.Size))
 }
 func (s *Server) keys(w http.ResponseWriter, r *http.Request, p Principal, parts []string) {
 	s.store.Lock()

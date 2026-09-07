@@ -380,7 +380,7 @@ func (s *Server) collectArtifacts(ctx context.Context, job string, r Run) ([]Fil
 			return errors.New("artifact limit exceeded")
 		}
 		id := ID("file_")
-		f := File{ID: id, Name: d.Name(), Size: info.Size(), RunID: r.ID, MIME: detectMIME(p)}
+		f := File{ID: id, Name: d.Name(), Size: info.Size(), RunID: r.ID, MIME: detectMIME(p), ExpiresAt: time.Now().Add(7 * 24 * time.Hour), DownloadsRemaining: 3}
 		if e = s.persistFile(ctx, &f, p); e != nil {
 			return errors.New("artifact upload to object storage failed")
 		}

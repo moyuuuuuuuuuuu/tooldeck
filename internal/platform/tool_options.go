@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -104,7 +105,17 @@ func (s *Server) notificationWorker(ctx context.Context) {
 		}
 		s.store.Unlock()
 		// Send a completion notice, not potentially sensitive input, output or log contents.
-		e := sendSMTPMessage(recipient, "ToolDeck task completed", fmt.Sprintf("工具：%s\r\n任务：%s\r\n状态：%s\r\n请登录 ToolDeck，在“我的记录”查看执行结果。", title, selected.ID, selected.Status))
+		message := fmt.Sprintf("工具：%s\r\n任务：%s\r\n状态：%s\r\n请登录 ToolDeck，在“我的记录”查看执行结果。", title, selected.ID, selected.Status)
+		var links []string
+		for _, artifact := range selected.Artifacts {
+			if link := s.artifactURL(artifact); link != "" && artifact.DownloadsRemaining > 0 && artifact.ExpiresAt.After(time.Now()) {
+				links = append(links, fmt.Sprintf("%s（剩余下载 %d 次，%s 前有效）\r\n%s", artifact.Name, artifact.DownloadsRemaining, artifact.ExpiresAt.Local().Format("2006-01-02 15:04"), link))
+			}
+		}
+		if len(links) > 0 {
+			message += "\r\n\r\n运行产物（每个文件最多下载 3 次，到期或次数用完后自动删除）：\r\n" + strings.Join(links, "\r\n\r\n")
+		}
+		e := sendSMTPMessage(recipient, "ToolDeck task completed", message)
 		if e == nil {
 			s.store.Lock()
 			run := s.store.State.Runs[selected.ID]
