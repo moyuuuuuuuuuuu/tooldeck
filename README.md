@@ -179,10 +179,10 @@ cd /volume1/docker/tooldeck
 
 ```bash
 cd /volume1/docker/tooldeck
-/usr/local/bin/docker compose -f deploy/compose.synology.yaml up -d --build
+/usr/local/bin/docker compose up -d --build
 ```
 
-不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
+NAS 的 `.env` 需要设置 `TOOLDECK_DATA_MOUNT=/volume1/docker/tooldeck/data`、`TOOLDECK_HOST_DATA=/volume1/docker/tooldeck/data` 和 `TOOLDECK_SANDBOX_PROFILE=synology`。不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
 
 ## 执行隔离与当前边界
 
