@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "blank-php",
+  "title": "PHP 空白工具模板",
+  "description": "使用 Composer PSR-4 自动加载和面向对象结构的 PHP 工具起点。",
+  "version": "1.0.0",
+  "runtime": "php",
+  "runtime_version": "8.1",
+  "entrypoint": "main.php",
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "network": {"enabled": false, "allowed_hosts": []},
+  "secrets": [],
+  "env": [],
+  "env_mode": "user",
+  "input_schema": {
+    "type": "object",
+    "properties": {"text": {"type": "string", "title": "文本内容", "minLength": 1}},
+    "required": ["text"]
+  },
+  "ui_schema": {"text": {"widget": "textarea", "rows": 4, "order": 10}},
+  "output_schema": {"type": "json"}
+}
