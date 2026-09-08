@@ -204,6 +204,8 @@ cd /volume1/docker/tooldeck
 
 NAS 的 `.env` 需要设置 `TOOLDECK_DATA_MOUNT=/volume1/docker/tooldeck/data`、`TOOLDECK_HOST_DATA=/volume1/docker/tooldeck/data`、`TOOLDECK_DATA_VOLUME=` 和 `TOOLDECK_SANDBOX_PROFILE=synology`。留空的 `TOOLDECK_DATA_VOLUME` 会关闭 Docker 命名卷路径探测，让运行节点使用 NAS 上明确配置的宿主机目录。不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
 
+匿名用户只能在 ToolDeck 同源网页中运行公开、已审核、已构建且不需要环境变量的工具。`/api/v1` 下的所有工具查询、执行、流式事件和结果接口均要求有效的 API Key、OAuth Token 或登录会话；匿名访客 Cookie 不具备 API 调用权限。
+
 ## 执行隔离与当前边界
 
 构建及执行使用非 root 容器、只读根目录、移除全部 capabilities、禁止提权、Docker 默认 seccomp、独立 IPC/cgroup、进程和内存限制。执行容器不挂载 Docker Socket，运行限制 1 CPU；禁用 core dump、限制文件句柄和单文件大小、关闭 Docker 日志落盘。

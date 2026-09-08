@@ -82,6 +82,8 @@ func TestGuestIsolation(t *testing.T) {
 	call("GET", "/api/public/runs/"+run.Data.ID+"/events", "", nil, 404)
 	call("GET", "/api/public/tools/public/environment", "", cookie, 404)
 	call("GET", "/api/v1/tools", "", cookie, 401)
+	call("POST", "/api/v1/tools/public/runs", `{"input":{}}`, nil, 401)
+	call("POST", "/api/v1/tools/public/runs", `{"input":{}}`, cookie, 401)
 	r := httptest.NewRequest("POST", "/api/public/tools/public/runs", strings.NewReader(`{"input":{}}`))
 	r.Header.Set("Origin", "https://foreign.example")
 	r.AddCookie(cookie)
