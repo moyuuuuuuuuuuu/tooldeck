@@ -202,7 +202,7 @@ cd /volume1/docker/tooldeck
 /usr/local/bin/docker compose up -d --build
 ```
 
-NAS 的 `.env` 需要设置 `TOOLDECK_DATA_MOUNT=/volume1/docker/tooldeck/data`、`TOOLDECK_HOST_DATA=/volume1/docker/tooldeck/data` 和 `TOOLDECK_SANDBOX_PROFILE=synology`。不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
+NAS 的 `.env` 需要设置 `TOOLDECK_DATA_MOUNT=/volume1/docker/tooldeck/data`、`TOOLDECK_HOST_DATA=/volume1/docker/tooldeck/data`、`TOOLDECK_DATA_VOLUME=` 和 `TOOLDECK_SANDBOX_PROFILE=synology`。留空的 `TOOLDECK_DATA_VOLUME` 会关闭 Docker 命名卷路径探测，让运行节点使用 NAS 上明确配置的宿主机目录。不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
 
 ## 执行隔离与当前边界
 

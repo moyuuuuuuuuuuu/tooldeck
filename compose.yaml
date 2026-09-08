@@ -8,7 +8,7 @@ services:
       - "${TOOLDECK_PORT:-18088}:8080"
     env_file: .env
     environment:
-      TOOLDECK_DATA_VOLUME: "${TOOLDECK_DATA_VOLUME:-tooldeck_data}"
+      TOOLDECK_DATA_VOLUME: "${TOOLDECK_DATA_VOLUME-tooldeck_data}"
       TOOLDECK_HOST_DATA: "${TOOLDECK_HOST_DATA:-}"
       TOOLDECK_SANDBOX_PROFILE: "${TOOLDECK_SANDBOX_PROFILE:-}"
     volumes:
