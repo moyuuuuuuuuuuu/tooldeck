@@ -53,12 +53,12 @@ func TestGuestIsolation(t *testing.T) {
 		return w
 	}
 	w := call("GET", "/api/public/tools", "", nil, 200)
-	if strings.Contains(w.Body.String(), "private-build-log") || strings.Contains(w.Body.String(), `"id":"env"`) {
+	if strings.Contains(w.Body.String(), "private-build-log") || !strings.Contains(w.Body.String(), `"id":"env"`) {
 		t.Fatal("private data exposed")
 	}
 	var list struct{ Data []Tool }
 	json.Unmarshal(w.Body.Bytes(), &list)
-	if len(list.Data) != 1 {
+	if len(list.Data) != 3 {
 		t.Fatal("unexpected public list", w.Body.String())
 	}
 	// Discovery must hide withdrawn tools even from their author/admin.

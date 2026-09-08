@@ -247,6 +247,10 @@
   }
   async function execute() {
     if (!tool.value) return
+    if (!user.isLogin && (tool.value.manifest.env?.length || tool.value.manifest.secrets?.length)) {
+      await router.push({ path: '/auth/login', query: { redirect: route.fullPath } })
+      return
+    }
     running.value = true
     try {
       result.value = await td.execute(tool.value.id, input.value)
@@ -262,6 +266,14 @@
       tool.value = list.find((item) => item.id === id)
       if (!tool.value && user.isLogin)
         tool.value = (await td.list('my-tools')).find((item) => item.id === id)
+      if (
+        tool.value &&
+        !user.isLogin &&
+        (tool.value.manifest.env?.length || tool.value.manifest.secrets?.length)
+      ) {
+        await router.replace({ path: '/auth/login', query: { redirect: route.fullPath } })
+        return
+      }
       if (tool.value) input.value = defaults(tool.value.manifest.input_schema)
     } finally {
       loading.value = false

@@ -8,8 +8,12 @@ import (
 	"strings"
 )
 
+func guestVisibleTool(t Tool) bool {
+	return !t.Playground && !t.Withdrawn && (t.Public == nil || *t.Public) && (t.ReviewStatus == "" || t.ReviewStatus == "approved") && (t.BuildStatus == "" || t.BuildStatus == "ready")
+}
+
 func guestTool(t Tool) bool {
-	return !t.Playground && !t.Withdrawn && (t.Public == nil || *t.Public) && (t.ReviewStatus == "" || t.ReviewStatus == "approved") && (t.BuildStatus == "" || t.BuildStatus == "ready") && len(t.Manifest.Env) == 0 && len(t.Manifest.Secrets) == 0
+	return guestVisibleTool(t) && len(t.Manifest.Env) == 0 && len(t.Manifest.Secrets) == 0
 }
 
 // Guest cookies are unguessable bearer identities, not a shared anonymous account.
@@ -52,7 +56,7 @@ func (s *Server) guestEndpoint(w http.ResponseWriter, r *http.Request) {
 		list := []Tool{}
 		s.store.Lock()
 		for _, t := range s.store.State.Tools {
-			if guestTool(t) {
+			if guestVisibleTool(t) {
 				t.BuildLog = ""
 				t.BuildError = ""
 				t.BuildImage = ""

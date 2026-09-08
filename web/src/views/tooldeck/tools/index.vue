@@ -4,11 +4,9 @@
       ><div
         ><span class="eyebrow">YOUR PERSONAL TOOLKIT</span><h1>找到工具，让想法即刻发生</h1
         ><p>选择合适的工具，填写参数或上传素材，即刻获得结果。</p></div
-      ><div v-if="useUserStore().isLogin" class="actions"
-        ><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发文档</ElButton
-        ><ElButton type="primary" size="large" @click="uploadOpen = true"
-          >＋ 上传工具包</ElButton
-        ></div
+      ><div class="actions"
+        ><ElButton size="large" @click="openGuide">开发文档</ElButton
+        ><ElButton type="primary" size="large" @click="openUpload">＋ 上传工具包</ElButton></div
       ></header
     >
     <div class="filters"
@@ -65,11 +63,13 @@
             }}</span
           >
           <span class="execution-mode">{{
-            tool.manifest.execution.stream
-              ? '流式输出'
-              : tool.manifest.execution.mode === 'async'
-                ? '后台处理'
-                : '即时返回'
+            needsLogin(tool) && !useUserStore().isLogin
+              ? '登录后使用'
+              : tool.manifest.execution.stream
+                ? '流式输出'
+                : tool.manifest.execution.mode === 'async'
+                  ? '后台处理'
+                  : '即时返回'
           }}</span>
         </div>
         <h2 :title="tool.manifest.title || tool.manifest.name">{{
@@ -90,10 +90,7 @@
         >
         <div class="card-bottom"
           ><span class="version">v{{ tool.manifest.version }}</span
-          ><ElButton
-            type="primary"
-            plain
-            @click="router.push('/tooldeck/run/' + encodeURIComponent(tool.id))"
+          ><ElButton type="primary" plain @click="openTool(tool)"
             >运行工具 <span class="run-arrow" aria-hidden="true">→</span></ElButton
           ></div
         >
@@ -281,6 +278,32 @@
       loading.value = false
     }
   }
+  function loginFor(path: string) {
+    router.push({ path: '/auth/login', query: { redirect: path } })
+  }
+  function needsLogin(tool: Tool) {
+    return Boolean(tool.manifest.env?.length || tool.manifest.secrets?.length)
+  }
+  function openTool(tool: Tool) {
+    const target = '/tooldeck/run/' + encodeURIComponent(tool.id)
+    if (needsLogin(tool) && !useUserStore().isLogin) {
+      loginFor(target)
+      return
+    }
+    if (useUserStore().isLogin) router.push(target)
+    else router.push({ path: '/explore', query: { tool: tool.id } })
+  }
+  function openUpload() {
+    if (!useUserStore().isLogin) {
+      loginFor('/tooldeck/tools?upload=1')
+      return
+    }
+    uploadOpen.value = true
+  }
+  function openGuide() {
+    if (useUserStore().isLogin) router.push('/tooldeck/guide')
+    else router.push({ path: '/explore', query: { view: 'guide' } })
+  }
   function markUploadDirty(field: UploadField) {
     uploadDirty.add(field)
   }
@@ -387,8 +410,6 @@
   onMounted(async () => {
     await load()
     if (useUserStore().isLogin && route.query.upload === '1') uploadOpen.value = true
-    if (route.query.tool)
-      await router.replace('/tooldeck/run/' + encodeURIComponent(String(route.query.tool)))
   })
 </script>
 <style scoped>
