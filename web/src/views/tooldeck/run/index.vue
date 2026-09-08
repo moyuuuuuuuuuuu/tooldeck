@@ -261,7 +261,7 @@
   }
   onMounted(async () => {
     try {
-      const id = String(route.params.id || '')
+      const id = String(route.params.id || route.query.tool || '')
       let list = await td.tools()
       tool.value = list.find((item) => item.id === id)
       if (!tool.value && user.isLogin)
