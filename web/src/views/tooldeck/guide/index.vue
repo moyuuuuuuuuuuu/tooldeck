@@ -35,14 +35,14 @@ my-tool.zip
           ><FileReference /></section
         ><section id="step-3"><div class="step-label">STEP 04</div><h2>第三方服务与依赖</h2><p>上传时勾选“使用第三方服务”，填写精确域名，例如 api.example.com。只允许声明的公网域名，不支持通配符和内网目标。HTTP 客户端需遵循运行环境的 HTTP_PROXY / HTTPS_PROXY。</p><p>上传源码即可：Node 提供 package.json 和 package-lock.json；PHP 提供 composer.json 和 composer.lock；Python 的 requirements.txt 需锁定版本并附完整哈希；Go 模块提供 go.mod 和 go.sum。平台在隔离环境安装依赖、执行构建，再保存产物供运行复用。无需上传 node_modules 或 vendor。</p><p>个人工具不能引用平台服务密钥。不要将私人凭证放入工具结果或日志；表单输入会保存在执行记录中。</p></section
         ><section id="step-4"
-          ><div class="step-label">STEP 05</div><h2>上传选项与通知</h2
+          ><div class="step-label">STEP 05</div><h2>上传选项</h2
           ><ul
             ><li>公开工具：公开时按站点设置审核，私有时无需审核。</li
             ><li>使用第三方服务：开启受域名限制的外网访问。</li
-            ><li>异步通知结果：后台执行，完成后站内通知，并向已验证邮箱发邮件提醒。邮件不包含输入、日志或完整结果。</li
+            ><li>执行模式：同步直接等待结果；异步 API 调用必须传入 callback_url，由平台完成后回调。</li
             ><li>允许 API 调用：开启后可使用本人 API Key / OAuth；关闭后仅限网页使用。</li></ul
           ><p>公开工具默认需管理员审核，通过后所有登录用户可见；私有工具不需要审核，仅本人和管理员可见。同名工具不能被他人接管。ZIP 最大64 MB，展开后128 MB、最多2000个条目。执行时限1–900秒，内存64–2048 MB。</p></section
-        ><section id="step-5"><div class="step-label">STEP 06</div><h2>API 调用概览</h2><p>工具详情的“API 参数”页提供当前工具的请求地址与参数说明。先在“访问凭证”创建 Key。文件需先 POST /api/v1/files（multipart file 字段），再把返回的 file_id 放入 input。</p><p>异步请求返回 run_id；使用 GET /api/v1/runs/{run_id} 查询状态。重试提交时使用相同 Idempotency-Key，避免重复执行。每次新操作使用新的 Key。完整说明见本页下方“API 调用指南”。</p></section
+        ><section id="step-5"><div class="step-label">STEP 06</div><h2>API 调用概览</h2><p>工具详情的“API 参数”页提供当前工具的请求地址与参数说明。先在“访问凭证”创建 Key。文件需先 POST /api/v1/files（multipart file 字段），再把返回的 file_id 放入 input。</p><p>异步 API 请求必须传入 HTTPS callback_url；任务结束后平台 POST 结果。回调失败会按 3、30、300、3000、300000 秒重试，全部失败后才产生站内信，不发送完成邮件。重试提交时使用相同 Idempotency-Key，避免重复执行。</p></section
         ><section id="step-6"><div class="step-label">STEP 07</div><h2>构建环境与日志</h2><p>支持 PHP 8.0–8.3、Node 20–23、Python 3.10–3.12、Go 1.22–1.24；用 runtime_version 声明版本，或上传时选择。可声明 build_command（例如 npm run build），入口文件须在构建后存在。构建时不提供业务密钥，仅允许依赖仓库出站访问；私有仓库凭证暂不支持。</p><p>构建最多10分钟，1个CPU、1GB内存，产物最多512MB。工具详情“构建与日志”查看状态和失败日志，失败可重试。成功版本不可重新构建，依赖变化应上传新版本。公开工具构建成功后才可审核。</p></section
         ><section id="step-7"
           ><div class="step-label">STEP 08</div><h2>环境变量与凭证</h2><p>打开自己的工具 → 环境变量，添加变量名、说明、必填和敏感值标记。每位使用者都能设置个人配置。优先级为：当前工具个人配置 → 当前工具作者共享配置；只注入工具已声明的同名变量。作者可另行维护共享配置，并决定是否允许未配置的变量回退到共享值。个人 API Key 调用与网页使用同一份个人配置。</p><p>代码包可声明 env 数组：每项包含 name、description、required、sensitive；env_mode 取 developer 或 user。ZIP 不应携带真实凭证。每次上传独立读取 env；未声明或为空数组时，表示该版本不需要环境变量。配置值按工具标识与提供方式保留。</p
@@ -68,7 +68,7 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
   const router = useRouter()
   const activeTab = ref(route.query.tab === 'api' ? 'api' : 'development')
   watch(activeTab, (tab) => router.replace({ query: tab === 'api' ? { tab: 'api' } : {} }))
-  const sections = ['准备目录与输入输出', '描述工具和动态表单', '图片和文件', '第三方服务与依赖', '上传选项与通知', 'API 调用概览', '构建环境与日志', '环境变量与凭证', '配置参数速查', 'SSE 流式输出']
+  const sections = ['准备目录与输入输出', '描述工具和动态表单', '图片和文件', '第三方服务与依赖', '上传选项', 'API 调用概览', '构建环境与日志', '环境变量与凭证', '配置参数速查', 'SSE 流式输出']
   const templates = [
     { label: 'PHP 8.1 + Composer', file: 'blank-php.zip' },
     { label: 'JavaScript', file: 'blank-js.zip' },

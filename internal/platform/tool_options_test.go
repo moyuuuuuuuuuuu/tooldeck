@@ -28,7 +28,7 @@ func TestPersonalToolOptions(t *testing.T) {
 		file.Write(z.Bytes())
 		mw.WriteField("third_party", "true")
 		mw.WriteField("allowed_hosts", "api.example.com")
-		mw.WriteField("notify_result", "true")
+		mw.WriteField("mode", "async")
 		mw.WriteField("api_enabled", "false")
 		mw.Close()
 		r := httptest.NewRequest("POST", "/api/v1/tools", &body)
@@ -46,7 +46,7 @@ func TestPersonalToolOptions(t *testing.T) {
 	}
 	json.Unmarshal(w.Body.Bytes(), &response)
 	tool := response.Data
-	if tool.Owner != "alice" || tool.APIEnabled == nil || *tool.APIEnabled || !tool.Notify || tool.Manifest.Execution.Mode != "async" || !tool.Manifest.Network.Enabled {
+	if tool.Owner != "alice" || tool.APIEnabled == nil || *tool.APIEnabled || tool.Manifest.Execution.Mode != "async" || !tool.Manifest.Network.Enabled {
 		t.Fatal(tool)
 	}
 	foreign := Principal{UserID: "bob", Session: true, Tools: []string{"*"}}
@@ -83,8 +83,15 @@ func TestPersonalToolOptions(t *testing.T) {
 	s.store.State.Runs[run.ID] = run
 	w = httptest.NewRecorder()
 	s.notifications(w, httptest.NewRequest("GET", "/", nil), p, []string{"notifications"})
+	if strings.Contains(w.Body.String(), run.ID) {
+		t.Fatal("ordinary completion generated a notification")
+	}
+	run.CallbackFailed = true
+	s.store.State.Runs[run.ID] = run
+	w = httptest.NewRecorder()
+	s.notifications(w, httptest.NewRequest("GET", "/", nil), p, []string{"notifications"})
 	if !strings.Contains(w.Body.String(), run.ID) {
-		t.Fatal("missing completion notification")
+		t.Fatal("missing callback failure notification")
 	}
 	w = httptest.NewRecorder()
 	s.notifications(w, httptest.NewRequest("GET", "/", nil), foreign, []string{"notifications"})

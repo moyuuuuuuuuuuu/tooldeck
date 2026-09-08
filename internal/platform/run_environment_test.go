@@ -17,7 +17,7 @@ func TestRunEnvironmentOverrideIsEncryptedAndScoped(t *testing.T) {
 	s.store.State.Tools[tool.ID] = tool
 	p := Principal{ID: "key", UserID: "bob", Tools: []string{"*"}}
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"input":{},"env":{"API_KEY":"one-time-secret"}}`))
+	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"input":{},"env":{"API_KEY":"one-time-secret"},"callback_url":"https://callback.example/result"}`))
 	s.createRun(w, r, p, tool.ID)
 	if w.Code != 202 {
 		t.Fatal(w.Code, w.Body.String())

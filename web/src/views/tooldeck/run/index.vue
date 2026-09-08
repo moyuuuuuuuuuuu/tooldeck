@@ -5,61 +5,143 @@
         ><ElButton text @click="router.push('/tooldeck/tools')">← 返回工具列表</ElButton
         ><div class="tool-heading"
           ><div
-            ><span class="eyebrow">{{ tool.manifest.runtime.toUpperCase() }} · v{{ tool.manifest.version }}</span
+            ><span class="eyebrow"
+              >{{ tool.manifest.runtime.toUpperCase() }} · v{{ tool.manifest.version }}</span
             ><h1>{{ tool.manifest.title || tool.manifest.name }}</h1
             ><p>{{ tool.manifest.description }}</p></div
-          ><div class="management-actions"><ElButton v-if="user.isLogin && tool.manifest.env?.length" type="warning" plain @click="openDetail('env')">配置运行环境变量</ElButton><ElButton v-if="user.isLogin && tool.api_enabled !== false" plain @click="openDetail('api')">API 参数</ElButton></div></div
+          ><div class="management-actions"
+            ><ElButton
+              v-if="user.isLogin && tool.manifest.env?.length"
+              type="warning"
+              plain
+              @click="openDetail('env')"
+              >配置运行环境变量</ElButton
+            ><ElButton
+              v-if="user.isLogin && tool.api_enabled !== false"
+              plain
+              @click="openDetail('api')"
+              >API 参数</ElButton
+            ></div
+          ></div
         ></header
       >
       <main class="workspace">
         <section class="form-panel"
           ><div class="panel-heading"
             ><div><span>INPUT</span><h2>运行参数</h2></div
-            ><ElTag v-if="tool.manifest.execution.mode === 'async'" type="info">异步执行</ElTag></div
+            ><ElTag v-if="tool.manifest.execution.mode === 'async'" type="info"
+              >异步执行</ElTag
+            ></div
           >
-          <DynamicField v-for="[name, field] in orderedFields" :key="tool.id + name" :label="String(name)" :schema="field" :ui="tool.manifest.ui_schema?.[name] || {}" :required="tool.manifest.input_schema.required?.includes(String(name))" v-model="input[name]" @uploading="uploading += $event ? 1 : -1" />
-          <ElAlert v-if="tool.build_status && tool.build_status !== 'ready'" title="工具尚未构建成功，暂时不能运行。" type="warning" :closable="false" />
+          <DynamicField
+            v-for="[name, field] in orderedFields"
+            :key="tool.id + name"
+            :label="String(name)"
+            :schema="field"
+            :ui="tool.manifest.ui_schema?.[name] || {}"
+            :required="tool.manifest.input_schema.required?.includes(String(name))"
+            v-model="input[name]"
+            @uploading="uploading += $event ? 1 : -1"
+          />
+          <ElAlert
+            v-if="tool.build_status && tool.build_status !== 'ready'"
+            title="工具尚未构建成功，暂时不能运行。"
+            type="warning"
+            :closable="false"
+          />
           <div class="run-action"
-            ><ElButton class="run-button" type="primary" size="large" :loading="running" :disabled="uploading > 0 || pending || (!!tool.build_status && tool.build_status !== 'ready')" @click="execute">{{ pending ? '正在执行' : '运行工具' }}</ElButton></div
+            ><ElButton
+              class="run-button"
+              type="primary"
+              size="large"
+              :loading="running"
+              :disabled="
+                uploading > 0 || pending || (!!tool.build_status && tool.build_status !== 'ready')
+              "
+              @click="execute"
+              >{{ pending ? '正在执行' : '运行工具' }}</ElButton
+            ></div
           >
         </section>
         <section class="result-panel"
           ><div class="panel-heading"
             ><div><span>OUTPUT</span><h2>运行结果</h2></div
             ><ElButton v-if="result" text @click="refresh">刷新</ElButton></div
-          ><ElEmpty v-if="!result" description="填写左侧参数并运行，结果将在这里显示" /><RunResult v-else :run="result" @update="result = $event"
+          ><ElEmpty v-if="!result" description="填写左侧参数并运行，结果将在这里显示" /><RunResult
+            v-else
+            :run="result"
+            @update="result = $event"
         /></section>
       </main>
-      <ElDrawer v-model="detailOpen" :title="tool.manifest.title || tool.manifest.name" size="min(680px, 94vw)" :modal="false" modal-class="tool-detail-overlay" destroy-on-close
+      <ElDrawer
+        v-model="detailOpen"
+        :title="tool.manifest.title || tool.manifest.name"
+        size="min(680px, 94vw)"
+        :modal="false"
+        modal-class="tool-detail-overlay"
+        destroy-on-close
         ><ElTabs v-model="detailTab"
-          ><ElTabPane v-if="user.isLogin && tool.manifest.env?.length" label="运行环境变量" name="env"><ElAlert :title="owner ? '个人配置与共享给使用者的配置分别保存；其他用户的个人值不会向作者或管理员展示。' : '这里保存的是你在此工具中的个人配置，与作者、管理员及其他用户完全隔离；保存后网页运行和你的 API 调用都会自动使用。'" type="warning" :closable="false" style="margin-bottom: 18px" /><ToolEnvironment :tool-id="tool.id" /></ElTabPane
+          ><ElTabPane
+            v-if="user.isLogin && tool.manifest.env?.length"
+            label="运行环境变量"
+            name="env"
+            ><ElAlert
+              :title="
+                owner
+                  ? '个人配置与共享给使用者的配置分别保存；其他用户的个人值不会向作者或管理员展示。'
+                  : '这里保存的是你在此工具中的个人配置，与作者、管理员及其他用户完全隔离；保存后网页运行和你的 API 调用都会自动使用。'
+              "
+              type="warning"
+              :closable="false"
+              style="margin-bottom: 18px" /><ToolEnvironment :tool-id="tool.id" /></ElTabPane
           ><ElTabPane v-if="user.isLogin && tool.api_enabled !== false" label="API 参数" name="api"
             ><div class="api-title"
               ><div><span>POST</span><h3>执行此工具</h3></div
-              ><ElButton text type="primary" @click="router.push('/tooldeck/guide?tab=api')">查看通用 API 指南 →</ElButton></div
+              ><ElButton text type="primary" @click="router.push('/tooldeck/guide?tab=api')"
+                >查看通用 API 指南 →</ElButton
+              ></div
             ><label class="endpoint-label">请求地址</label
             ><div class="endpoint"
               ><code>{{ apiEndpoint }}</code
               ><ElButton type="primary" plain @click="copyEndpoint">复制地址</ElButton></div
             ><h3>input 参数</h3
             ><ElTable :data="inputParameters" size="small"
-              ><ElTableColumn prop="name" label="参数" min-width="130" /><ElTableColumn prop="type" label="类型" width="105" /><ElTableColumn label="必填" width="65"
-                ><template #default="{ row }">{{ row.required ? '是' : '否' }}</template></ElTableColumn
+              ><ElTableColumn prop="name" label="参数" min-width="130" /><ElTableColumn
+                prop="type"
+                label="类型"
+                width="105" /><ElTableColumn label="必填" width="65"
+                ><template #default="{ row }">{{
+                  row.required ? '是' : '否'
+                }}</template></ElTableColumn
               ><ElTableColumn prop="description" label="说明" min-width="180" /></ElTable
             ><template v-if="tool.manifest.env?.length"
               ><h3>可选 env 临时覆盖</h3
               ><ElTable :data="tool.manifest.env" size="small"
-                ><ElTableColumn prop="name" label="变量" min-width="150" /><ElTableColumn label="必填" width="65"
-                  ><template #default="{ row }">{{ row.required ? '是' : '否' }}</template></ElTableColumn
+                ><ElTableColumn prop="name" label="变量" min-width="150" /><ElTableColumn
+                  label="必填"
+                  width="65"
+                  ><template #default="{ row }">{{
+                    row.required ? '是' : '否'
+                  }}</template></ElTableColumn
                 ><ElTableColumn prop="description" label="说明" min-width="180" /></ElTable
-              ><p class="api-hint">env 可省略并使用已保存的个人配置；传入时仅覆盖本次运行。</p></template
+              ><p class="api-hint"
+                >env 可省略并使用已保存的个人配置；传入时仅覆盖本次运行。</p
+              ></template
             ><h3>请求体示例</h3><pre>{{ requestBodyExample }}</pre>
           </ElTabPane></ElTabs
         ></ElDrawer
       >
     </template>
-    <ElResult v-else-if="!loading" icon="warning" title="工具不可用" sub-title="工具不存在、尚未公开或当前账号无权访问"
-      ><template #extra><ElButton type="primary" @click="router.push('/tooldeck/tools')">返回工具列表</ElButton></template></ElResult
+    <ElResult
+      v-else-if="!loading"
+      icon="warning"
+      title="工具不可用"
+      sub-title="工具不存在、尚未公开或当前账号无权访问"
+      ><template #extra
+        ><ElButton type="primary" @click="router.push('/tooldeck/tools')"
+          >返回工具列表</ElButton
+        ></template
+      ></ElResult
     >
   </div>
 </template>
@@ -84,10 +166,20 @@
     uploading = ref(0),
     detailOpen = ref(false),
     detailTab = ref('api')
-  const orderedFields = computed(() => Object.entries(tool.value?.manifest.input_schema.properties || {}).sort(([a], [b]) => (tool.value?.manifest.ui_schema?.[a]?.order ?? 0) - (tool.value?.manifest.ui_schema?.[b]?.order ?? 0)))
+  const orderedFields = computed(() =>
+    Object.entries(tool.value?.manifest.input_schema.properties || {}).sort(
+      ([a], [b]) =>
+        (tool.value?.manifest.ui_schema?.[a]?.order ?? 0) -
+        (tool.value?.manifest.ui_schema?.[b]?.order ?? 0)
+    )
+  )
   const pending = computed(() => ['queued', 'running'].includes(result.value?.status || ''))
-  const owner = computed(() => user.info.roles?.includes('R_SUPER') || tool.value?.owner === String(user.info.id))
-  const apiEndpoint = computed(() => `${location.origin}/api/v1/tools/${tool.value?.id || 'TOOL_ID'}/runs`)
+  const owner = computed(
+    () => user.info.roles?.includes('R_SUPER') || tool.value?.owner === String(user.info.id)
+  )
+  const apiEndpoint = computed(
+    () => `${location.origin}/api/v1/tools/${tool.value?.id || 'TOOL_ID'}/runs`
+  )
   const inputParameters = computed(() =>
     orderedFields.value.map(([name, field]) => ({
       name,
@@ -96,8 +188,21 @@
       description: field.description || field.title || '—'
     }))
   )
-  const envExample = computed(() => Object.fromEntries((tool.value?.manifest.env || []).slice(0, 3).map((field) => [field.name, '<本次调用值>'])))
-  const requestPayload = computed(() => (Object.keys(envExample.value).length ? { input: input.value, env: envExample.value } : { input: input.value }))
+  const envExample = computed(() =>
+    Object.fromEntries(
+      (tool.value?.manifest.env || []).slice(0, 3).map((field) => [field.name, '<本次调用值>'])
+    )
+  )
+  const requestPayload = computed(() => ({
+    input: input.value,
+    ...(Object.keys(envExample.value).length ? { env: envExample.value } : {}),
+    ...(tool.value?.manifest.execution.mode === 'async'
+      ? {
+          callback_url: 'https://example.com/tooldeck/callback',
+          callback_secret: '<建议填写回调签名密钥>'
+        }
+      : {})
+  }))
   const requestBodyExample = computed(() => JSON.stringify(requestPayload.value, null, 2))
   let timer: ReturnType<typeof setTimeout> | undefined
   function defaults(s: Field): any {
@@ -155,7 +260,8 @@
       const id = String(route.params.id || '')
       let list = await td.tools()
       tool.value = list.find((item) => item.id === id)
-      if (!tool.value && user.isLogin) tool.value = (await td.list('my-tools')).find((item) => item.id === id)
+      if (!tool.value && user.isLogin)
+        tool.value = (await td.list('my-tools')).find((item) => item.id === id)
       if (tool.value) input.value = defaults(tool.value.manifest.input_schema)
     } finally {
       loading.value = false

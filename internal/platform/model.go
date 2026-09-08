@@ -82,7 +82,6 @@ type Tool struct {
 	Owner        string      `json:"owner,omitempty"`
 	Author       *ToolAuthor `json:"author,omitempty"`
 	APIEnabled   *bool       `json:"api_enabled,omitempty"`
-	Notify       bool        `json:"notify_result"`
 	ID           string      `json:"id"`
 	Manifest     Manifest    `json:"manifest"`
 	Created      time.Time   `json:"created_at"`
@@ -98,9 +97,12 @@ type ToolAuthor struct {
 }
 type Run struct {
 	Events           []StreamEvent  `json:"stream_events,omitempty"`
-	EmailSent        bool           `json:"email_sent"`
-	EmailAttempts    int            `json:"email_attempts"`
-	EmailNext        time.Time      `json:"email_next,omitempty"`
+	CallbackURL      string         `json:"callback_url,omitempty"`
+	CallbackAttempts int            `json:"callback_attempts,omitempty"`
+	CallbackNext     time.Time      `json:"callback_next,omitempty"`
+	CallbackSent     bool           `json:"callback_sent,omitempty"`
+	CallbackFailed   bool           `json:"callback_failed,omitempty"`
+	CallbackError    string         `json:"callback_error,omitempty"`
 	NotificationRead bool           `json:"notification_read"`
 	ID               string         `json:"run_id"`
 	ToolID           string         `json:"tool_id"`
@@ -147,19 +149,20 @@ type Secret struct {
 	Tools  []string `json:"tools"`
 }
 type State struct {
-	AccountEnv     map[string]map[string]string `json:"account_env,omitempty"`
-	ToolEnv        map[string]map[string]string `json:"tool_env,omitempty"`
-	ReviewRequired *bool                        `json:"review_required,omitempty"`
-	EmailCodes     map[string]EmailCode         `json:"email_codes"`
-	Users          map[string]User              `json:"users"`
-	Tools          map[string]Tool              `json:"tools"`
-	Runs           map[string]Run               `json:"runs"`
-	RunEnv         map[string]map[string]string `json:"run_env,omitempty"`
-	Files          map[string]File              `json:"files"`
-	Owners         map[string]string            `json:"owners"`
-	Keys           map[string]Credential        `json:"keys"`
-	Secrets        map[string]Secret            `json:"secrets"`
-	Idempotency    map[string]string            `json:"idempotency"`
+	AccountEnv      map[string]map[string]string `json:"account_env,omitempty"`
+	ToolEnv         map[string]map[string]string `json:"tool_env,omitempty"`
+	ReviewRequired  *bool                        `json:"review_required,omitempty"`
+	EmailCodes      map[string]EmailCode         `json:"email_codes"`
+	Users           map[string]User              `json:"users"`
+	Tools           map[string]Tool              `json:"tools"`
+	Runs            map[string]Run               `json:"runs"`
+	RunEnv          map[string]map[string]string `json:"run_env,omitempty"`
+	CallbackSecrets map[string]string            `json:"callback_secrets,omitempty"`
+	Files           map[string]File              `json:"files"`
+	Owners          map[string]string            `json:"owners"`
+	Keys            map[string]Credential        `json:"keys"`
+	Secrets         map[string]Secret            `json:"secrets"`
+	Idempotency     map[string]string            `json:"idempotency"`
 }
 type Store struct {
 	sync.Mutex
@@ -175,7 +178,7 @@ func OpenStore(root string) (*Store, error) {
 	if err = os.MkdirAll(root, 0700); err != nil {
 		return nil, err
 	}
-	s := &Store{Root: root, State: State{Tools: map[string]Tool{}, Runs: map[string]Run{}, RunEnv: map[string]map[string]string{}, Files: map[string]File{}, Owners: map[string]string{}, Keys: map[string]Credential{}, Secrets: map[string]Secret{}, Idempotency: map[string]string{}, Users: map[string]User{}}}
+	s := &Store{Root: root, State: State{Tools: map[string]Tool{}, Runs: map[string]Run{}, RunEnv: map[string]map[string]string{}, CallbackSecrets: map[string]string{}, Files: map[string]File{}, Owners: map[string]string{}, Keys: map[string]Credential{}, Secrets: map[string]Secret{}, Idempotency: map[string]string{}, Users: map[string]User{}}}
 	b, err := os.ReadFile(filepath.Join(root, "state.json"))
 	if err == nil {
 		err = json.Unmarshal(b, &s.State)
@@ -185,6 +188,9 @@ func OpenStore(root string) (*Store, error) {
 	}
 	if s.State.RunEnv == nil {
 		s.State.RunEnv = map[string]map[string]string{}
+	}
+	if s.State.CallbackSecrets == nil {
+		s.State.CallbackSecrets = map[string]string{}
 	}
 	for id, t := range s.State.Tools {
 		if t.BuildStatus == "building" {

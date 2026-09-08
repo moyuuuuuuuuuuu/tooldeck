@@ -1,10 +1,45 @@
-export function apiExamples(base: string, toolId: string, input: any, env?: Record<string,string>) {
- const url=`${base}/api/v1/tools/${toolId}/runs`, body=JSON.stringify(env&&Object.keys(env).length?{input,env}:{input}), q=JSON.stringify
- const php=(v:string)=>"'"+v.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'"
- return {
- PHP:`<?php\n// PHP 8 + cURL；TOOLDECK_API_KEY 通过环境变量配置\n$ch = curl_init(${php(url)});\ncurl_setopt_array($ch, [\n  CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,\n  CURLOPT_TIMEOUT => 30,\n  CURLOPT_HTTPHEADER => ['X-API-Key: ' . getenv('TOOLDECK_API_KEY'), 'Content-Type: application/json'],\n  CURLOPT_POSTFIELDS => ${php(body)}\n]);\n$response = curl_exec($ch);\nif ($response === false) throw new Exception(curl_error($ch));\n$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);\ncurl_close($ch);\nif ($status >= 400) throw new Exception($response);\necho $response;\n// 若 data.status 为 queued/running，用同一 Key GET /api/v1/runs/{data.run_id} 查询。`,
- Java:`// Java 11+，保存为 Main.java，无第三方依赖\nimport java.net.URI;\nimport java.net.http.*;\nimport java.time.Duration;\npublic class Main {\n  public static void main(String[] args) throws Exception {\n    HttpClient client = HttpClient.newHttpClient();\n    HttpRequest request = HttpRequest.newBuilder(URI.create(${q(url)}))\n      .timeout(Duration.ofSeconds(30))\n      .header("X-API-Key", System.getenv("TOOLDECK_API_KEY"))\n      .header("Content-Type", "application/json")\n      .POST(HttpRequest.BodyPublishers.ofString(${q(body)})).build();\n    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\n    if (response.statusCode() >= 400) throw new RuntimeException(response.body());\n    System.out.println(response.body());\n    // queued/running：同一 Key 请求 GET /api/v1/runs/{data.run_id}。\n  }\n}`,
- Python:`# Python 3，使用标准库\nimport json, os, urllib.request, time\nheaders = {"X-API-Key": os.environ["TOOLDECK_API_KEY"], "Content-Type": "application/json"}\nrequest = urllib.request.Request(${q(url)}, data=${q(body)}.encode("utf-8"), headers=headers, method="POST")\nwith urllib.request.urlopen(request, timeout=30) as response:\n    run = json.load(response)["data"]\nwhile run["status"] in ("queued", "running"):\n    time.sleep(2)\n    request = urllib.request.Request(${q(base+'/api/v1/runs/')} + run["run_id"], headers=headers)\n    with urllib.request.urlopen(request, timeout=30) as response:\n        run = json.load(response)["data"]\nprint(json.dumps(run, ensure_ascii=False, indent=2))`,
- Go:`package main\nimport ("fmt"; "io"; "net/http"; "os"; "strings"; "time")\nfunc main() {\n  req, err := http.NewRequest("POST", ${q(url)}, strings.NewReader(${q(body)}))\n  if err != nil { panic(err) }\n  req.Header.Set("X-API-Key", os.Getenv("TOOLDECK_API_KEY"))\n  req.Header.Set("Content-Type", "application/json")\n  client := &http.Client{Timeout: 30*time.Second}\n  resp, err := client.Do(req); if err != nil { panic(err) }; defer resp.Body.Close()\n  body, err := io.ReadAll(resp.Body); if err != nil { panic(err) }\n  if resp.StatusCode >= 400 { panic(string(body)) }\n  fmt.Println(string(body))\n  // queued/running：同一 Key 请求 GET /api/v1/runs/{data.run_id}。\n}`
- }
+export function apiExamples(base: string, toolId: string, input: unknown, env?: Record<string, string>, asynchronous = false) {
+  const url = `${base}/api/v1/tools/${toolId}/runs`
+  const payload: Record<string, unknown> = env && Object.keys(env).length ? { input, env } : { input }
+  if (asynchronous) {
+    payload.callback_url = 'https://example.com/tooldeck/callback'
+    payload.callback_secret = 'YOUR_CALLBACK_SECRET'
+  }
+  const body = JSON.stringify(payload)
+  const quote = JSON.stringify
+  const php = (value: string) => "'" + value.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"
+  const note = asynchronous ? '最终结果将由 ToolDeck POST 到 callback_url。' : '同步工具直接返回最终结果。'
+  return {
+    PHP: `<?php
+$ch = curl_init(${php(url)});
+curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER => ['X-API-Key: ' . getenv('TOOLDECK_API_KEY'), 'Content-Type: application/json'],
+  CURLOPT_POSTFIELDS => ${php(body)}]);
+$response = curl_exec($ch);
+if ($response === false) throw new Exception(curl_error($ch));
+echo $response;
+// ${note}`,
+    Java: `// Java 11+
+HttpRequest request = HttpRequest.newBuilder(URI.create(${quote(url)}))
+  .header("X-API-Key", System.getenv("TOOLDECK_API_KEY"))
+  .header("Content-Type", "application/json")
+  .POST(HttpRequest.BodyPublishers.ofString(${quote(body)})).build();
+System.out.println(HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString()).body());
+// ${note}`,
+    Python: `import json, os, urllib.request
+headers = {"X-API-Key": os.environ["TOOLDECK_API_KEY"], "Content-Type": "application/json"}
+request = urllib.request.Request(${quote(url)}, data=${quote(body)}.encode(), headers=headers, method="POST")
+with urllib.request.urlopen(request, timeout=30) as response:
+    print(json.dumps(json.load(response), ensure_ascii=False, indent=2))
+# ${note}`,
+    Go: `req, _ := http.NewRequest("POST", ${quote(url)}, strings.NewReader(${quote(body)}))
+req.Header.Set("X-API-Key", os.Getenv("TOOLDECK_API_KEY"))
+req.Header.Set("Content-Type", "application/json")
+resp, err := (&http.Client{Timeout: 30*time.Second}).Do(req)
+if err != nil { panic(err) }
+defer resp.Body.Close()
+body, _ := io.ReadAll(resp.Body)
+fmt.Println(string(body))
+// ${note}`
+  }
 }

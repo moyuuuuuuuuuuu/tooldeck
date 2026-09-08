@@ -156,7 +156,7 @@ func TestIdempotencyAndCancel(t *testing.T) {
 	s.store.State.Tools["tool1"] = Tool{ID: "tool1", Manifest: m}
 	s.store.State.Keys["key1"] = Credential{ID: "key1", Hash: hash("td_test"), Tools: []string{"echo"}, Expires: time.Now().Add(time.Hour)}
 	call := func(text string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("POST", "/api/v1/tools/tool1/runs", strings.NewReader(`{"input":{"text":"`+text+`"}}`))
+		r := httptest.NewRequest("POST", "/api/v1/tools/tool1/runs", strings.NewReader(`{"input":{"text":"`+text+`"},"callback_url":"https://callback.example/result"}`))
 		r.Header.Set("X-API-Key", "td_test")
 		r.Header.Set("Idempotency-Key", "same")
 		w := httptest.NewRecorder()

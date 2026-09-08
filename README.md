@@ -12,7 +12,7 @@
 - **API 接入**：个人 API Key、长期有效 Key、所有工具通用授权，以及外部 OAuth 令牌验证。
 - **账号与个人中心**：邮箱验证码注册、登录、默认字母头像、资料维护、密码修改和个人使用统计。
 - **环境变量**：工具个人配置、账号统一配置和作者共享配置；值加密保存，不回显。
-- **异步任务**：任务查询、取消、站内通知和邮件提醒。
+- **异步任务**：请求级 HTTPS 回调、签名校验、失败重试、状态查询与取消。
 - **文件存储**：百度智能云 BOS，或本地开发存储。
 
 ## 快速启动
@@ -78,7 +78,7 @@ my-tool.zip
 - 构建状态为 `queued → building → ready / failed`，失败可重试，成功版本固定产物与镜像 ID；修改依赖需上传新版本。
 - 构建不注入业务密钥，仅允许受限依赖仓库访问；私有依赖仓库凭证暂不支持。
 - 公开工具默认需审核，审核关闭时后续公开上传自动通过；私有工具无需审核，仅本人及管理员可见。
-- 上传可选择是否使用第三方服务、异步通知以及允许 API 调用。
+- 上传可选择是否使用第三方服务、同步或异步执行，以及是否允许 API 调用；异步 API 由调用方在每次请求中提供回调地址。
 
 生成示例 ZIP：
 
@@ -137,7 +137,7 @@ curl -X POST http://localhost:18088/api/v1/tools/TOOL_ID/runs \
 
 OAuth 使用外部 RFC 7662 introspection 服务，平台不提供授权服务器。配置 `.env.example` 中的 URL、客户端凭证和 audience，调用方携带 `Authorization: Bearer TOKEN`；scope 使用 `tool:工具名` 或 `tool:*`。
 
-## 邮箱注册与通知
+## 邮箱注册与找回密码
 
 QQ SMTP 默认使用 `smtp.qq.com:465` 和 TLS，填写：
 
@@ -145,9 +145,27 @@ QQ SMTP 默认使用 `smtp.qq.com:465` 和 TLS，填写：
 - `TOOLDECK_SMTP_USERNAME`：SMTP 登录邮箱。
 - `TOOLDECK_SMTP_PASSWORD`：SMTP 授权码，不是 QQ 登录密码。
 
-未配置 SMTP 时无法完成新用户邮箱验证，已存在的账号可继续登录。新账号以已验证邮箱登录，历史用户名登录仍兼容。暂不支持更换注册邮箱或邮件找回密码。
+未配置 SMTP 时无法完成新用户邮箱验证和邮件找回密码，已存在的账号可继续登录。新账号以已验证邮箱登录，历史用户名登录仍兼容。暂不支持更换注册邮箱。
 
-启用异步通知后，任务完成会生成站内通知，并向用户已验证邮箱发送提醒；邮件不包含输入、日志或完整结果。邮件最多尝试三次，不保证严格一次投递。
+异步 API 任务不发送完成邮件，也不在正常完成时产生站内信；仅当结果回调和 5 次重试全部失败时，向 API Key 所属站内账号产生一条异常通知。
+
+## 异步 API 结果回调
+
+当工具的 `execution.mode` 为 `async` 时，API Key / OAuth 调用必须在请求体提供：
+
+```json
+{
+  "input": { "text": "hello" },
+  "callback_url": "https://example.com/tooldeck/callback",
+  "callback_secret": "可选的回调验签密钥"
+}
+```
+
+任务到达 `succeeded`、`failed`、`timed_out` 或 `canceled` 后，平台向 `callback_url` 发送 `POST application/json`。接收方返回任意 2xx 即成功；失败时依次等待 `3s`、`30s`、`300s`、`3000s`、`300000s` 重试，即首次推送外最多重试 5 次。回调采用至少一次投递语义，接收方应按 `run_id` 幂等处理。
+
+回调地址必须为公网 HTTPS 地址，不允许账号信息、URL 片段、内网、回环或保留地址，也不跟随重定向。若提供 `callback_secret`，平台以原始 JSON 请求体计算 HMAC-SHA256，并发送 `X-ToolDeck-Signature: sha256=十六进制摘要`；同时包含 `X-ToolDeck-Event: tool.run.completed` 和 `X-ToolDeck-Run-ID`。密钥加密保存且不在 API 响应中返回。
+
+回调体包含 `event`、`run_id`、`tool_id`、`status`、`result`、`error`、`artifacts`、`created_at`、`started_at` 和 `duration_ms`。产物项带短期下载地址。正常完成不产生站内信或邮件；所有回调尝试失败后，才向 API Key 所属账号产生一条站内异常通知。OAuth 调用没有对应站内账号时，可从任务查询接口读取 `callback_failed`、`callback_attempts` 和 `callback_error`。
 
 ## BOS 与数据备份
 

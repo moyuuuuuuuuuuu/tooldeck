@@ -1,56 +1,209 @@
 <template>
   <div class="tool-page">
     <header class="tooldeck-page-hero"
-      ><div><span class="eyebrow">YOUR PERSONAL TOOLKIT</span><h1>找到工具，让想法即刻发生</h1><p>选择合适的工具，填写参数或上传素材，即刻获得结果。</p></div
-      ><div v-if="useUserStore().isLogin" class="actions"><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发文档</ElButton><ElButton type="primary" size="large" @click="uploadOpen = true">＋ 上传工具包</ElButton></div></header
+      ><div
+        ><span class="eyebrow">YOUR PERSONAL TOOLKIT</span><h1>找到工具，让想法即刻发生</h1
+        ><p>选择合适的工具，填写参数或上传素材，即刻获得结果。</p></div
+      ><div v-if="useUserStore().isLogin" class="actions"
+        ><ElButton size="large" @click="$router.push('/tooldeck/guide')">开发文档</ElButton
+        ><ElButton type="primary" size="large" @click="uploadOpen = true"
+          >＋ 上传工具包</ElButton
+        ></div
+      ></header
     >
     <div class="filters"
-      ><ElInput v-model="search" placeholder="搜索工具名称或用途" clearable style="max-width: 340px" /><ElSelect v-if="isAdmin()" v-model="runtime" clearable placeholder="所有运行环境" style="width: 170px"><ElOption v-for="r in ['php', 'js', 'node', 'python', 'go']" :key="r" :label="r" :value="r" /></ElSelect><ElButton @click="load">刷新</ElButton></div
+      ><ElInput
+        v-model="search"
+        placeholder="搜索工具名称或用途"
+        clearable
+        style="max-width: 340px"
+      /><ElSelect
+        v-if="isAdmin()"
+        v-model="runtime"
+        clearable
+        placeholder="所有运行环境"
+        style="width: 170px"
+        ><ElOption
+          v-for="r in ['php', 'js', 'node', 'python', 'go']"
+          :key="r"
+          :label="r"
+          :value="r" /></ElSelect
+      ><ElButton @click="load">刷新</ElButton></div
     >
     <ElEmpty v-if="!loading && !filtered.length" description="暂时没有可用工具，请稍后再来看看。" />
     <div v-loading="loading" class="cards">
       <ElCard v-for="tool in filtered" :key="tool.id" shadow="never" class="tool-card">
         <div class="card-top">
-          <span class="runtime">{{ isAdmin() ? tool.manifest.runtime.toUpperCase() : '在线工具' }}</span>
-          <span class="visibility" :class="tool.withdrawn ? 'muted' : tool.review_status === 'rejected' ? 'rejected' : ['draft', 'pending'].includes(tool.review_status || '') ? 'pending' : tool.public === false ? 'muted' : 'public'"><i />{{ tool.withdrawn ? '已下架' : tool.review_status === 'draft' ? '待构建/提交' : tool.public === false ? '私有' : tool.review_status === 'pending' ? '审核中' : tool.review_status === 'rejected' ? '已驳回' : '公开' }}</span>
-          <span class="execution-mode">{{ tool.manifest.execution.stream ? '流式输出' : tool.manifest.execution.mode === 'async' ? '后台处理' : '即时返回' }}</span>
+          <span class="runtime">{{
+            isAdmin() ? tool.manifest.runtime.toUpperCase() : '在线工具'
+          }}</span>
+          <span
+            class="visibility"
+            :class="
+              tool.withdrawn
+                ? 'muted'
+                : tool.review_status === 'rejected'
+                  ? 'rejected'
+                  : ['draft', 'pending'].includes(tool.review_status || '')
+                    ? 'pending'
+                    : tool.public === false
+                      ? 'muted'
+                      : 'public'
+            "
+            ><i />{{
+              tool.withdrawn
+                ? '已下架'
+                : tool.review_status === 'draft'
+                  ? '待构建/提交'
+                  : tool.public === false
+                    ? '私有'
+                    : tool.review_status === 'pending'
+                      ? '审核中'
+                      : tool.review_status === 'rejected'
+                        ? '已驳回'
+                        : '公开'
+            }}</span
+          >
+          <span class="execution-mode">{{
+            tool.manifest.execution.stream
+              ? '流式输出'
+              : tool.manifest.execution.mode === 'async'
+                ? '后台处理'
+                : '即时返回'
+          }}</span>
         </div>
-        <h2 :title="tool.manifest.title || tool.manifest.name">{{ tool.manifest.title || tool.manifest.name }}</h2>
-        <p class="card-description" :title="tool.manifest.description">{{ tool.manifest.description || '暂无说明' }}</p>
-        <p v-if="tool.review_status === 'rejected' && !tool.withdrawn" class="review-note">审核意见：{{ tool.review_note || '请调整后上传新版本' }}</p>
-        <ElTag v-if="tool.build_status && tool.build_status !== 'ready'" class="build-status" size="small" :type="tool.build_status === 'failed' ? 'danger' : 'warning'">{{ buildLabels[tool.build_status] || tool.build_status }}</ElTag>
+        <h2 :title="tool.manifest.title || tool.manifest.name">{{
+          tool.manifest.title || tool.manifest.name
+        }}</h2>
+        <p class="card-description" :title="tool.manifest.description">{{
+          tool.manifest.description || '暂无说明'
+        }}</p>
+        <p v-if="tool.review_status === 'rejected' && !tool.withdrawn" class="review-note"
+          >审核意见：{{ tool.review_note || '请调整后上传新版本' }}</p
+        >
+        <ElTag
+          v-if="tool.build_status && tool.build_status !== 'ready'"
+          class="build-status"
+          size="small"
+          :type="tool.build_status === 'failed' ? 'danger' : 'warning'"
+          >{{ buildLabels[tool.build_status] || tool.build_status }}</ElTag
+        >
         <div class="card-bottom"
           ><span class="version">v{{ tool.manifest.version }}</span
-          ><ElButton type="primary" plain @click="router.push('/tooldeck/run/' + encodeURIComponent(tool.id))">运行工具 <span class="run-arrow" aria-hidden="true">→</span></ElButton></div
+          ><ElButton
+            type="primary"
+            plain
+            @click="router.push('/tooldeck/run/' + encodeURIComponent(tool.id))"
+            >运行工具 <span class="run-arrow" aria-hidden="true">→</span></ElButton
+          ></div
         >
       </ElCard>
     </div>
     <ElDialog v-model="uploadOpen" title="上传工具包草稿" width="520px" @closed="resetUploadForm">
-      <ElUpload ref="uploadRef" class="package-upload" drag accept=".zip" :auto-upload="false" :limit="1" :on-change="onZipChange" :on-remove="onZipRemove">
+      <ElUpload
+        ref="uploadRef"
+        class="package-upload"
+        drag
+        accept=".zip"
+        :auto-upload="false"
+        :limit="1"
+        :on-change="onZipChange"
+        :on-remove="onZipRemove"
+      >
         <p>将 ZIP 拖到这里，或点击选择</p>
         <small>最大 64 MB</small>
       </ElUpload>
-      <p class="intro">ZIP 根目录包含 tooldeck.json 和入口代码。选择文件后自动读取包内声明；之后手动修改的字段会优先保留。本步骤只保存源码草稿，不会自动构建或提交审核。</p>
-      <ElAlert v-if="manifestSummary" :title="manifestSummary" type="success" :closable="false" style="margin-bottom: 16px" />
-      <ElAlert v-if="manifestError" :title="manifestError" type="error" :closable="false" style="margin-bottom: 16px" />
+      <p class="intro"
+        >ZIP 根目录包含 tooldeck.json
+        和入口代码。选择文件后自动读取包内声明；之后手动修改的字段会优先保留。本步骤只保存源码草稿，不会自动构建或提交审核。</p
+      >
+      <ElAlert
+        v-if="manifestSummary"
+        :title="manifestSummary"
+        type="success"
+        :closable="false"
+        style="margin-bottom: 16px"
+      />
+      <ElAlert
+        v-if="manifestError"
+        :title="manifestError"
+        type="error"
+        :closable="false"
+        style="margin-bottom: 16px"
+      />
       <ElFormItem label="构建环境版本"
-        ><ElSelect v-model="buildVersion" placeholder="使用代码包声明或平台默认版本" clearable style="width: 100%" @change="markUploadDirty('buildVersion')"
-          ><ElOptionGroup v-for="(versions, language) in versionOptions" :key="language" :label="String(language)"><ElOption v-for="v in versions" :key="language + v" :value="String(language) + ':' + v" :label="language + ' ' + v" /></ElOptionGroup></ElSelect
+        ><ElSelect
+          v-model="buildVersion"
+          placeholder="使用代码包声明或平台默认版本"
+          clearable
+          style="width: 100%"
+          @change="markUploadDirty('buildVersion')"
+          ><ElOptionGroup
+            v-for="(versions, language) in versionOptions"
+            :key="language"
+            :label="String(language)"
+            ><ElOption
+              v-for="v in versions"
+              :key="language + v"
+              :value="String(language) + ':' + v"
+              :label="language + ' ' + v" /></ElOptionGroup></ElSelect
       ></ElFormItem>
-      <ElFormItem label="构建命令（可选）"><ElInput v-model="buildCommand" placeholder="例如 npm run build，留空使用包内声明" maxlength="512" @input="markUploadDirty('buildCommand')" /></ElFormItem>
-      <p class="intro">不必上传 node_modules 或 vendor。保存后请到“我上传的工具”主动开始构建；只有构建成功后才能提交审核。</p>
-      <div style="margin-bottom: 12px"><ElCheckbox v-model="isPublic">公开工具（构建成功后提交审核）</ElCheckbox></div>
-      <ElCheckbox v-model="thirdParty" @change="markUploadDirty('thirdParty')">使用第三方服务</ElCheckbox>
-      <ElInput v-if="thirdParty" v-model="allowedHosts" placeholder="允许访问的域名，逗号分隔；留空表示清空包内声明" style="margin: 12px 0" @input="markUploadDirty('allowedHosts')" />
-      <div><ElCheckbox v-model="notifyResult">异步通知结果（站内 + 邮件）</ElCheckbox></div>
-      <p v-if="notifyResult" class="intro">开启后后台执行，完成时站内通知，并向已验证邮箱发送完成提醒。需站点已配置邮件服务。</p>
+      <ElFormItem label="构建命令（可选）"
+        ><ElInput
+          v-model="buildCommand"
+          placeholder="例如 npm run build，留空使用包内声明"
+          maxlength="512"
+          @input="markUploadDirty('buildCommand')"
+      /></ElFormItem>
+      <p class="intro"
+        >不必上传 node_modules 或
+        vendor。保存后请到“我上传的工具”主动开始构建；只有构建成功后才能提交审核。</p
+      >
+      <div style="margin-bottom: 12px"
+        ><ElCheckbox v-model="isPublic">公开工具（构建成功后提交审核）</ElCheckbox></div
+      >
+      <ElCheckbox v-model="thirdParty" @change="markUploadDirty('thirdParty')"
+        >使用第三方服务</ElCheckbox
+      >
+      <ElInput
+        v-if="thirdParty"
+        v-model="allowedHosts"
+        placeholder="允许访问的域名，逗号分隔；留空表示清空包内声明"
+        style="margin: 12px 0"
+        @input="markUploadDirty('allowedHosts')"
+      />
       <ElFormItem label="SSE 流式输出"
-        ><ElSelect v-model="streamMode" style="width: 100%" @change="markUploadDirty('streamMode')"><ElOption value="" label="跟随工具包声明（未声明则关闭）" /><ElOption value="true" label="开启 SSE 流式输出" /><ElOption value="false" label="关闭 SSE 流式输出" /></ElSelect
+        ><ElSelect v-model="streamMode" style="width: 100%" @change="markUploadDirty('streamMode')"
+          ><ElOption value="" label="跟随工具包声明（未声明则关闭）" /><ElOption
+            value="true"
+            label="开启 SSE 流式输出" /><ElOption
+            value="false"
+            label="关闭 SSE 流式输出" /></ElSelect
       ></ElFormItem>
-      <p v-if="streamMode === 'true'" class="intro">工具需按协议发送增量事件；网页实时显示，API 可订阅 SSE。与完成通知独立。</p>
-      <div style="margin-bottom: 18px"><ElCheckbox v-model="apiEnabled">允许 API 调用</ElCheckbox></div>
-      <ElSelect v-model="uploadMode" :disabled="notifyResult" style="width: 100%; margin-bottom: 18px" @change="markUploadDirty('uploadMode')"><ElOption value="" label="使用代码包声明的运行模式" /><ElOption value="sync" label="同步返回结果" /><ElOption value="async" label="异步执行，查询结果" /></ElSelect>
-      <template #footer><ElButton @click="uploadOpen = false">取消</ElButton><ElButton type="primary" :loading="uploadBusy || manifestLoading" :disabled="!zip || !!manifestError" @click="publish">上传源码并保存草稿</ElButton></template>
+      <p v-if="streamMode === 'true'" class="intro"
+        >工具需按协议发送增量事件；网页实时显示，API 可订阅 SSE。与完成通知独立。</p
+      >
+      <div style="margin-bottom: 18px"
+        ><ElCheckbox v-model="apiEnabled">允许 API 调用</ElCheckbox></div
+      >
+      <ElSelect
+        v-model="uploadMode"
+        style="width: 100%; margin-bottom: 18px"
+        @change="markUploadDirty('uploadMode')"
+        ><ElOption value="" label="使用代码包声明的运行模式" /><ElOption
+          value="sync"
+          label="同步返回结果" /><ElOption value="async" label="异步执行，通过调用方回调返回结果"
+      /></ElSelect>
+      <template #footer
+        ><ElButton @click="uploadOpen = false">取消</ElButton
+        ><ElButton
+          type="primary"
+          :loading="uploadBusy || manifestLoading"
+          :disabled="!zip || !!manifestError"
+          @click="publish"
+          >上传源码并保存草稿</ElButton
+        ></template
+      >
     </ElDialog>
   </div>
 </template>
@@ -88,9 +241,9 @@
   const streamMode = ref('')
   const thirdParty = ref(false),
     allowedHosts = ref(''),
-    notifyResult = ref(false),
     apiEnabled = ref(true)
-  type UploadField = 'buildVersion' | 'buildCommand' | 'thirdParty' | 'allowedHosts' | 'streamMode' | 'uploadMode'
+  type UploadField =
+    'buildVersion' | 'buildCommand' | 'thirdParty' | 'allowedHosts' | 'streamMode' | 'uploadMode'
   type UploadManifest = {
     schema_version?: number
     name?: string
@@ -111,7 +264,15 @@
     manifestSummary = ref('')
   const uploadRef = ref<UploadInstance>()
   const uploadDirty = new Set<UploadField>()
-  const filtered = computed(() => tools.value.filter((t) => (!runtime.value || t.manifest.runtime === runtime.value) && `${t.manifest.name} ${t.manifest.title} ${t.manifest.description}`.toLowerCase().includes(search.value.toLowerCase())))
+  const filtered = computed(() =>
+    tools.value.filter(
+      (t) =>
+        (!runtime.value || t.manifest.runtime === runtime.value) &&
+        `${t.manifest.name} ${t.manifest.title} ${t.manifest.description}`
+          .toLowerCase()
+          .includes(search.value.toLowerCase())
+    )
+  )
   async function load() {
     loading.value = true
     try {
@@ -143,18 +304,33 @@
       const entry = archive.file('tooldeck.json')
       if (!entry) throw new Error('ZIP 根目录缺少 tooldeck.json')
       const manifest = JSON.parse(await entry.async('string')) as UploadManifest
-      if (!manifest || typeof manifest !== 'object' || manifest.schema_version !== 1) throw new Error('tooldeck.json 无效或 schema_version 不是 1')
-      const runtime = { js: 'node', py: 'python', golang: 'go' }[manifest.runtime || ''] || manifest.runtime || ''
-      if (manifest.runtime_version) setFromManifest('buildVersion', `${runtime}:${manifest.runtime_version}`)
+      if (!manifest || typeof manifest !== 'object' || manifest.schema_version !== 1)
+        throw new Error('tooldeck.json 无效或 schema_version 不是 1')
+      const runtime =
+        { js: 'node', py: 'python', golang: 'go' }[manifest.runtime || ''] || manifest.runtime || ''
+      if (manifest.runtime_version)
+        setFromManifest('buildVersion', `${runtime}:${manifest.runtime_version}`)
       else setFromManifest('buildVersion', '')
       setFromManifest('buildCommand', manifest.build_command || '')
       if (manifest.network) {
         setFromManifest('thirdParty', manifest.network.enabled === true)
-        setFromManifest('allowedHosts', Array.isArray(manifest.network.allowed_hosts) ? manifest.network.allowed_hosts.join(', ') : '')
+        setFromManifest(
+          'allowedHosts',
+          Array.isArray(manifest.network.allowed_hosts)
+            ? manifest.network.allowed_hosts.join(', ')
+            : ''
+        )
       }
-      setFromManifest('streamMode', typeof manifest.execution?.stream === 'boolean' ? String(manifest.execution.stream) : '')
-      setFromManifest('uploadMode', ['sync', 'async'].includes(manifest.execution?.mode || '') ? manifest.execution?.mode : '')
-      manifestSummary.value = `已读取：${manifest.title || manifest.name || '未命名工具'} ${manifest.version ? 'v' + manifest.version : ''}`.trim()
+      setFromManifest(
+        'streamMode',
+        typeof manifest.execution?.stream === 'boolean' ? String(manifest.execution.stream) : ''
+      )
+      setFromManifest(
+        'uploadMode',
+        ['sync', 'async'].includes(manifest.execution?.mode || '') ? manifest.execution?.mode : ''
+      )
+      manifestSummary.value =
+        `已读取：${manifest.title || manifest.name || '未命名工具'} ${manifest.version ? 'v' + manifest.version : ''}`.trim()
     } catch (error) {
       manifestError.value = error instanceof Error ? error.message : '无法读取 tooldeck.json'
     } finally {
@@ -175,7 +351,6 @@
     streamMode.value = ''
     uploadMode.value = ''
     isPublic.value = true
-    notifyResult.value = false
     apiEnabled.value = true
     zip.value = undefined
     manifestError.value = ''
@@ -188,7 +363,6 @@
     try {
       const options: Record<string, string> = {
         public: String(isPublic.value),
-        notify_result: String(notifyResult.value),
         api_enabled: String(apiEnabled.value)
       }
       let mode = ''
@@ -198,7 +372,8 @@
         options.runtime_version = buildVersion.value.split(':')[1] || ''
       }
       if (uploadDirty.has('buildCommand')) options.build_command = buildCommand.value
-      if (uploadDirty.has('streamMode') && streamMode.value !== '') options.stream = streamMode.value
+      if (uploadDirty.has('streamMode') && streamMode.value !== '')
+        options.stream = streamMode.value
       if (uploadDirty.has('thirdParty')) options.third_party = String(thirdParty.value)
       if (uploadDirty.has('allowedHosts')) options.allowed_hosts = allowedHosts.value
       await td.upload(zip.value, 'tools', mode, options)
@@ -212,7 +387,8 @@
   onMounted(async () => {
     await load()
     if (useUserStore().isLogin && route.query.upload === '1') uploadOpen.value = true
-    if (route.query.tool) await router.replace('/tooldeck/run/' + encodeURIComponent(String(route.query.tool)))
+    if (route.query.tool)
+      await router.replace('/tooldeck/run/' + encodeURIComponent(String(route.query.tool)))
   })
 </script>
 <style scoped>
@@ -308,7 +484,12 @@
   .tool-page > header {
     padding: 32px;
     border-radius: 20px;
-    background: linear-gradient(115deg, var(--el-color-primary-light-9), var(--el-bg-color) 65%, var(--el-color-success-light-9));
+    background: linear-gradient(
+      115deg,
+      var(--el-color-primary-light-9),
+      var(--el-bg-color) 65%,
+      var(--el-color-success-light-9)
+    );
     border: 1px solid #e4e9f6;
   }
   .tool-page > header h1 {

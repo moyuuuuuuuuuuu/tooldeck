@@ -20,6 +20,7 @@ import (
 
 type Server struct {
 	mailSender                   func(string, string) error
+	callbackSender               func(string, string, callbackPayload) error
 	bos                          *BOSStore
 	store                        *Store
 	hostData, oauthURL, password string
@@ -79,7 +80,7 @@ func New(root, password string) (*Server, error) {
 }
 func (s *Server) Start(ctx context.Context) {
 	go s.worker(ctx)
-	go s.notificationWorker(ctx)
+	go s.callbackWorker(ctx)
 	go s.buildWorker(ctx)
 	go s.artifactCleanupWorker(ctx)
 }
@@ -439,8 +440,7 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		m.Execution.Stream = value == "true"
 	}
 	apiEnabled := true
-	notify := false
-	for field, target := range map[string]*bool{"public": &public, "api_enabled": &apiEnabled, "notify_result": &notify} {
+	for field, target := range map[string]*bool{"public": &public, "api_enabled": &apiEnabled} {
 		if value := r.FormValue(field); value != "" {
 			if value != "true" && value != "false" {
 				fail(w, 422, "invalid boolean option")
@@ -465,9 +465,6 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 	}
 	if values, present := r.Form["allowed_hosts"]; present && len(values) > 0 {
 		m.Network.AllowedHosts = strings.FieldsFunc(values[0], func(r rune) bool { return r == ',' || r == '\n' || r == ' ' })
-	}
-	if notify {
-		m.Execution.Mode = "async"
 	}
 	if !p.Admin && len(m.Secrets) > 0 {
 		fail(w, 403, "个人上传工具暂不支持引用平台第三方密钥，请通过输入参数提供自己的凭证")
@@ -496,7 +493,7 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		return
 	}
 	m.RuntimeVersion, _ = runtimeVersion(m)
-	tool := Tool{BuildStatus: "pending", Public: &public, ReviewStatus: "draft", ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled, Notify: notify}
+	tool := Tool{BuildStatus: "pending", Public: &public, ReviewStatus: "draft", ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled}
 	s.store.State.Tools[id] = tool
 	if e = s.store.save(); e != nil {
 		delete(s.store.State.Tools, id)
@@ -511,8 +508,10 @@ func (s *Server) canReadRun(p Principal, r Run) bool {
 }
 func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, id string) {
 	var b struct {
-		Input map[string]any    `json:"input"`
-		Env   map[string]string `json:"env"`
+		Input          map[string]any    `json:"input"`
+		Env            map[string]string `json:"env"`
+		CallbackURL    string            `json:"callback_url"`
+		CallbackSecret string            `json:"callback_secret"`
 	}
 	if e := decode(w, r, &b); e != nil {
 		fail(w, 400, e)
@@ -524,6 +523,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 	if b.Env == nil {
 		b.Env = map[string]string{}
 	}
+	b.CallbackURL = strings.TrimSpace(b.CallbackURL)
 	s.store.Lock()
 	t, ok := s.store.State.Tools[id]
 	if !ok || !canUseTool(p, t) {
@@ -531,9 +531,26 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		fail(w, 404, "tool unavailable")
 		return
 	}
+	apiAsync := !p.Session && !p.Guest && t.Manifest.Execution.Mode == "async"
 	if !p.Session && !p.Guest && t.APIEnabled != nil && !*t.APIEnabled {
 		s.store.Unlock()
 		fail(w, 403, "此工具未开放 API 调用，请在网页中使用")
+		return
+	}
+	if apiAsync {
+		if e := validateCallbackURL(b.CallbackURL); e != nil {
+			s.store.Unlock()
+			fail(w, 422, e)
+			return
+		}
+		if len(b.CallbackSecret) > 512 || strings.ContainsRune(b.CallbackSecret, 0) {
+			s.store.Unlock()
+			fail(w, 422, "callback_secret 最多512字节且不能包含空字符")
+			return
+		}
+	} else if b.CallbackURL != "" || b.CallbackSecret != "" {
+		s.store.Unlock()
+		fail(w, 422, "callback_url 仅用于异步 API 调用")
 		return
 	}
 	if t.BuildStatus != "" && t.BuildStatus != "ready" {
@@ -589,6 +606,26 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			fail(w, 409, "idempotency key was used with a different input")
 			return
 		}
+		if run.CallbackURL != b.CallbackURL {
+			s.store.Unlock()
+			fail(w, 409, "idempotency key was used with a different callback_url")
+			return
+		}
+		storedCallbackSecret := ""
+		if cipher := s.store.State.CallbackSecrets[run.ID]; cipher != "" {
+			var decryptErr error
+			storedCallbackSecret, decryptErr = s.decrypt(cipher)
+			if decryptErr != nil {
+				s.store.Unlock()
+				fail(w, 500, "回调密钥解密失败")
+				return
+			}
+		}
+		if storedCallbackSecret != b.CallbackSecret {
+			s.store.Unlock()
+			fail(w, 409, "idempotency key was used with a different callback_secret")
+			return
+		}
 		storedEnv := map[string]string{}
 		for name, cipher := range s.store.State.RunEnv[run.ID] {
 			value, e := s.decrypt(cipher)
@@ -626,7 +663,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		} else if strings.HasPrefix(p.ID, "oauth:") {
 			source = "oauth"
 		}
-		run = Run{ID: ID("run_"), ToolID: id, Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now()}
+		run = Run{ID: ID("run_"), ToolID: id, Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
 		encryptedEnv := map[string]string{}
 		for name, value := range b.Env {
 			cipher, e := s.encrypt(value)
@@ -641,12 +678,24 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		if len(encryptedEnv) > 0 {
 			s.store.State.RunEnv[run.ID] = encryptedEnv
 		}
+		if b.CallbackSecret != "" {
+			cipher, e := s.encrypt(b.CallbackSecret)
+			if e != nil {
+				delete(s.store.State.Runs, run.ID)
+				delete(s.store.State.RunEnv, run.ID)
+				s.store.Unlock()
+				fail(w, 500, "回调密钥加密失败")
+				return
+			}
+			s.store.State.CallbackSecrets[run.ID] = cipher
+		}
 		if key != "" {
 			s.store.State.Idempotency[index] = run.ID
 		}
 		if e := s.store.save(); e != nil {
 			delete(s.store.State.Runs, run.ID)
 			delete(s.store.State.RunEnv, run.ID)
+			delete(s.store.State.CallbackSecrets, run.ID)
 			if key != "" {
 				delete(s.store.State.Idempotency, index)
 			}
