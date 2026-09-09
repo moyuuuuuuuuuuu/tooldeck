@@ -7,7 +7,7 @@
   "runtime": "go",
   "runtime_version": "1.22",
   "entrypoint": "main.go",
-  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128, "cancel_hook": true},
   "network": {"enabled": false, "allowed_hosts": []},
   "secrets": [],
   "env": [],
