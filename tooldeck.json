@@ -7,7 +7,7 @@
   "runtime": "py",
   "runtime_version": "3.12",
   "entrypoint": "main.py",
-  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128, "cancel_hook": true},
   "network": {"enabled": false, "allowed_hosts": []},
   "secrets": [],
   "env": [],
