@@ -2,6 +2,8 @@
 
 ZIP 根目录包含 `tooldeck.json` 与入口文件。示例见 `examples/`。
 
+五种空白工具模板均提供独立源码分支，分支根目录只包含可上传的工具包代码，不包含 ToolDeck 平台本体：[PHP + Composer](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/php-tool-example)、[JavaScript](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/js-tool-example)、[Node.js + npm](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/node-tool-example)、[Python](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/python-tool-example)、[Go Modules](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/go-tool-example)。
+
 ## 输入与输出
 
 入口程序从 stdin 读取一个 JSON 对象，stdout 输出且仅输出一个 JSON 值，日志写 stderr。非零退出码表示失败。
