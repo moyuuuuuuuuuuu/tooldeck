@@ -364,13 +364,18 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     margin: auto;
     line-height: 1.85;
   }
-  header {
-    display: flex;
-    justify-content: space-between;
-    gap: 24px;
-    align-items: center;
-    padding: 30px 0 26px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+  .guide header.tooldeck-page-hero {
+    display: block;
+    padding: 32px;
+    margin-bottom: 30px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 20px;
+    background: linear-gradient(
+      115deg,
+      var(--el-color-primary-light-9),
+      var(--el-bg-color) 65%,
+      var(--el-color-success-light-9)
+    );
   }
   .eyebrow,
   .nav-label,
@@ -380,14 +385,21 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     letter-spacing: 1.8px;
     color: #6575ad;
   }
-  h1 {
-    font-size: 30px;
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--el-color-primary);
+  }
+  .guide header h1 {
+    font-size: 32px;
     letter-spacing: -0.7px;
     font-weight: 700;
     margin: 9px 0;
   }
-  header p {
-    margin: 0;
+  .guide header p {
+    max-width: 760px;
+    margin: 12px 0;
+    line-height: 1.8;
   }
   .runtime-strip {
     display: flex;
@@ -532,12 +544,10 @@ print(json.dumps({"text": data["text"].upper()}, ensure_ascii=False))`
     padding: 5px 0;
   }
   @media (max-width: 800px) {
-    header {
-      align-items: flex-start;
-      flex-direction: column;
-      padding-top: 12px;
+    .guide header.tooldeck-page-hero {
+      padding: 26px 22px;
     }
-    h1 {
+    .guide header h1 {
       font-size: 25px;
     }
     .guide-layout {
