@@ -7,7 +7,7 @@
   "runtime": "node",
   "runtime_version": "22",
   "entrypoint": "main.js",
-  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128, "cancel_hook": true},
   "network": {"enabled": false, "allowed_hosts": []},
   "secrets": [],
   "env": [],
