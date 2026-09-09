@@ -49,12 +49,12 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    max-width: 1240px;
-    margin: auto;
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 22px 32px;
+    padding: 22px max(32px, calc((100vw - 1240px) / 2));
     border-bottom: 1px solid var(--el-border-color-lighter);
     background: color-mix(in srgb, var(--el-bg-color) 94%, transparent);
     backdrop-filter: blur(12px);
