@@ -144,6 +144,16 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
                   <code>execution.cancel_hook: true</code> 后，用户取消运行时，ToolDeck
                   会先在原容器中再次调用入口；取消钩子完成后才停止主任务。</p
                 ><pre>{{ cancelManifest }}</pre
+                ><h3>调用方如何取消任务</h3
+                ><p
+                  >创建任务后保存响应中的 <code>run_id</code>。网页可在执行结果中点击“取消执行”；API
+                  调用方使用原凭证向取消接口发送 POST 请求：</p
+                ><pre>{{ cancelRequest }}</pre
+                ><p
+                  >排队任务会直接变为 <code>canceled</code>。运行中任务先变为
+                  <code>canceling</code>，钩子完成后变为 <code>canceled</code>；钩子失败或超时则变为
+                  <code>cancel_failed</code>，错误原因位于 <code>cancel_error</code>。</p
+                ><h3>工具如何取消第三方任务</h3
                 ><p
                   >入口通过 <code>TOOLDECK_ACTION</code> 区分正常运行和取消。取得第三方任务 ID
                   后，应先写临时文件，再原子重命名到
@@ -186,7 +196,12 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
   const route = useRoute()
   const router = useRouter()
   const activeTab = ref(route.query.tab === 'api' ? 'api' : 'development')
-  watch(activeTab, (tab) => router.replace({ query: tab === 'api' ? { tab: 'api' } : {} }))
+  watch(activeTab, (tab) => {
+    const query = { ...route.query }
+    if (tab === 'api') query.tab = 'api'
+    else delete query.tab
+    router.replace({ query })
+  })
   const sections = [
     '准备目录与输入输出',
     '描述工具和动态表单',
@@ -283,6 +298,12 @@ export class Application extends Tool { /* 实现两个方法 */ }`
     null,
     2
   )
+  const cancelRequest = `curl -X POST 'https://你的域名/api/v1/runs/RUN_ID/cancel' \\
+  -H 'X-API-Key: YOUR_API_KEY'
+
+# 查询取消进度和最终状态
+curl 'https://你的域名/api/v1/runs/RUN_ID' \\
+  -H 'X-API-Key: YOUR_API_KEY'`
   function jump(i: number) {
     document.getElementById('step-' + i)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }

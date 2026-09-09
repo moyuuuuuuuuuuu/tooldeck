@@ -132,10 +132,17 @@ curl -X POST http://localhost:18088/api/v1/tools/TOOL_ID/runs \
 | GET | `/api/v1/runs/{id}` | 查询状态、结果及产物 |
 | POST | `/api/v1/runs/{id}/cancel` | 取消任务 |
 | GET | `/api/v1/runs/{id}/logs` | 查看执行日志 |
-
-工具可通过 `execution.cancel_hook: true` 声明取消钩子。运行中的任务被取消时，平台会先以 `TOOLDECK_ACTION=cancel` 在原容器中再次调用入口，再停止主任务；第三方任务 ID 等取消状态可写入 `TOOLDECK_STATE_FILE`。钩子失败时任务终态为 `cancel_failed`，详情见 `cancel_error`。
 | POST | `/api/v1/files` | 上传文件，multipart `file` 字段 |
 | GET | `/api/v1/files/{id}` | 授权下载文件 |
+
+调用方使用创建任务时返回的 `run_id` 发起取消：
+
+```bash
+curl -X POST 'https://你的域名/api/v1/runs/RUN_ID/cancel' \
+  -H 'X-API-Key: YOUR_API_KEY'
+```
+
+排队任务会直接变为 `canceled`。运行中任务先变为 `canceling`；工具声明 `execution.cancel_hook: true` 时，平台会先以 `TOOLDECK_ACTION=cancel` 在原容器中调用入口，再停止主任务。第三方任务 ID 等取消状态应写入 `TOOLDECK_STATE_FILE`。钩子成功后状态为 `canceled`；失败或超时则为 `cancel_failed`，原因见 `cancel_error`。
 
 工具详情提供 PHP、Java、Python、Go 调用示例。上传、账号配置与授权管理使用登录会话，执行 Key 不具备这些管理权限。
 

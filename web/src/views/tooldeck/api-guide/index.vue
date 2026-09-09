@@ -47,7 +47,7 @@
           ></section
         >
         <section id="status"
-          ><h2>4. 接收异步结果</h2
+          ><h2>4. 查询、回调与取消任务</h2
           ><p
             >任务结束后，平台向 callback_url POST 完整结果；接收方返回任意 2xx 即视为成功。失败后按
             3、30、300、3000、300000 秒重试，共重试 5 次。</p
@@ -58,8 +58,16 @@
             <code>X-ToolDeck-Event</code> 和
             <code>X-ToolDeck-Run-ID</code
             >。最终失败时仅产生站内信，不发送邮件。排障时仍可使用同一凭证查询：</p
-          ><pre>GET /api/v1/runs/{run_id}</pre><p>处理中状态包括 queued、running、canceling；终态包括 succeeded、failed、timed_out、canceled、cancel_failed。可取消尚未结束的任务：</p
-          ><pre>POST /api/v1/runs/{run_id}/cancel</pre>
+          ><pre>GET /api/v1/runs/{run_id}</pre
+          ><p
+            >处理中状态包括 queued、running、canceling；终态包括
+            succeeded、failed、timed_out、canceled、cancel_failed。使用创建任务时返回的 run_id
+            取消尚未结束的任务：</p
+          ><pre>{{ cancelCurl }}</pre
+          ><p
+            >排队任务直接取消；运行中任务先进入 canceling，待工具取消钩子完成后进入 canceled 或
+            cancel_failed。接口返回最新任务记录，重复请求不会重复执行取消钩子。</p
+          >
         </section>
         <section id="files"
           ><h2>5. 文件上传与下载</h2
@@ -104,7 +112,7 @@
     { id: 'auth', title: '身份认证' },
     { id: 'tools', title: '访问工具' },
     { id: 'submit', title: '提交执行' },
-    { id: 'status', title: '结果回调' },
+    { id: 'status', title: '查询与取消' },
     { id: 'files', title: '文件接口' },
     { id: 'retry', title: '安全重试' },
     { id: 'example', title: '完整示例' },
@@ -115,6 +123,8 @@
   const callbackBody = `{\n  "event": "tool.run.completed",\n  "run_id": "run_xxx",\n  "tool_id": "tool_xxx",\n  "status": "succeeded",\n  "result": { "result": "..." },\n  "artifacts": [],\n  "created_at": "...",\n  "started_at": "...",\n  "duration_ms": 1200\n}`
   const fileUpload = `POST /api/v1/files\nContent-Type: multipart/form-data\nfile=@/path/to/input.png`
   const fileDownload = `GET /api/v1/files/{file_id}\nX-API-Key: YOUR_API_KEY`
+  const cancelCurl = `curl -X POST 'https://你的域名/api/v1/runs/RUN_ID/cancel' \\
+  -H 'X-API-Key: YOUR_API_KEY'`
   const curl = `# 1. 获取可访问工具\ncurl 'https://你的域名/api/v1/tools' -H 'X-API-Key: YOUR_API_KEY'\n\n# 2. 提交异步任务\ncurl -X POST 'https://你的域名/api/v1/tools/TOOL_ID/runs' \\\n+  -H 'X-API-Key: YOUR_API_KEY' \\\n+  -H 'Idempotency-Key: YOUR_UNIQUE_REQUEST_ID' \\\n+  -H 'Content-Type: application/json' \\\n+  -d '{"input":{"text":"hello"},"callback_url":"https://example.com/tooldeck/callback","callback_secret":"YOUR_CALLBACK_SECRET"}'\n\n# 3. 接收端校验 X-ToolDeck-Signature 并返回任意 2xx\n# 排障时仍可查询任务\ncurl 'https://你的域名/api/v1/runs/RUN_ID' -H 'X-API-Key: YOUR_API_KEY'\n\n# 4. 下载结果文件\ncurl -OJ 'https://你的域名/api/v1/files/FILE_ID' -H 'X-API-Key: YOUR_API_KEY'`
 </script>
 <style scoped>

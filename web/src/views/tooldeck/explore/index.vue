@@ -4,8 +4,7 @@
       ><RouterLink class="brand" to="/explore">ToolDeck</RouterLink
       ><nav
         ><ElButton text @click="show()">发现工具</ElButton
-        ><ElButton text @click="show('guide')">开发指引</ElButton
-        ><ElButton text @click="show('api')">API 接入</ElButton
+        ><ElButton text @click="show('guide')">开发文档</ElButton
         ><ElButton text @click="login('/tooldeck/playground')">在线运行</ElButton></nav
       ><div class="header-actions"
         ><ThemeSwitch /><ElButton @click="login(route.fullPath)">登录</ElButton
@@ -14,7 +13,6 @@
     ><main
       ><template v-if="route.query.tool"><Run /></template
       ><template v-else-if="route.query.view === 'guide'"><Guide /></template
-      ><template v-else-if="route.query.view === 'api'"><ApiGuide /></template
       ><template v-else
         ><p class="notice"
           >公开工具均可浏览；无需环境变量的工具可以直接运行，需要个人配置的工具会在使用时引导登录。</p
@@ -26,7 +24,6 @@
   import Tools from '../tools/index.vue'
   import Run from '../run/index.vue'
   import Guide from '../guide/index.vue'
-  import ApiGuide from '../api-guide/index.vue'
   import ThemeSwitch from '../components/ThemeSwitch.vue'
   const route = useRoute(),
     router = useRouter()
@@ -49,6 +46,9 @@
     background: var(--el-bg-color);
   }
   header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     max-width: 1240px;
     margin: auto;
     display: flex;
@@ -56,6 +56,8 @@
     justify-content: space-between;
     padding: 22px 32px;
     border-bottom: 1px solid var(--el-border-color-lighter);
+    background: color-mix(in srgb, var(--el-bg-color) 94%, transparent);
+    backdrop-filter: blur(12px);
   }
   .brand {
     font-size: 23px;

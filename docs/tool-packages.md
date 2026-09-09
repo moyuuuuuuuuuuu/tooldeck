@@ -24,6 +24,15 @@ ui_schema 按字段名配置 widget（textarea、radio、select、image-upload�
 
 需要取消第三方异步任务的工具可设置 `execution.cancel_hook: true`。用户取消一个正在运行的任务时，平台先在同一个容器中再次调用工具入口，并设置 `TOOLDECK_ACTION=cancel`；取消入口仍从 stdin 收到原始输入。主任务使用 `TOOLDECK_ACTION=run`。
 
+调用方使用创建任务时返回的 `run_id` 请求 ToolDeck 取消任务（使用与创建或查询任务相同的登录令牌、API Key 或 OAuth 凭证）：
+
+```bash
+curl -X POST 'https://你的域名/api/v1/runs/RUN_ID/cancel' \
+  -H 'X-API-Key: YOUR_API_KEY'
+```
+
+该接口返回最新任务记录。排队任务直接进入 `canceled`；运行中任务先进入 `canceling`，待取消钩子结束后进入 `canceled` 或 `cancel_failed`。重复取消已经处于 `canceling` 或终态的任务不会再次执行钩子。
+
 主任务取得第三方任务 ID 后，应以 JSON 写入 `TOOLDECK_STATE_FILE` 指定的文件（先写临时文件再原子重命名）。取消入口可读取该文件并调用第三方取消接口。钩子最长执行 15 秒；成功后平台停止主任务并标记 `canceled`，失败或超时则停止主任务并标记 `cancel_failed`，错误摘要位于 `cancel_error`。排队中尚未启动的任务直接取消，不调用钩子。取消请求具有幂等性，`canceling`、`canceled` 或其他终态不会再次调用钩子。
 
 取消钩子的 stdout 和 stderr 不进入运行结果或公开日志，避免第三方 SDK 错误意外泄漏密钥。工具应自行把第三方取消请求设计为幂等操作，并正确处理“第三方任务 ID 尚未写入”的竞态。PHP 面向对象示例见 `examples/blank-php`。

@@ -1,17 +1,50 @@
 <template>
   <div class="site"
     ><header class="site-header"
-      ><RouterLink class="brand" to="/tooldeck/tools"><span class="brand-icon">T</span>ToolDeck</RouterLink><nav><RouterLink to="/tooldeck/tools">工具广场</RouterLink><RouterLink to="/tooldeck/my-tools">我的工具</RouterLink><RouterLink to="/tooldeck/playground">在线调试</RouterLink><RouterLink to="/tooldeck/runs">运行记录</RouterLink><RouterLink to="/tooldeck/credentials">访问凭证</RouterLink><RouterLink to="/tooldeck/guide">开发文档</RouterLink></nav
+      ><RouterLink class="brand" to="/tooldeck/tools"
+        ><span class="brand-icon">T</span>ToolDeck</RouterLink
+      ><nav
+        ><RouterLink to="/tooldeck/tools">工具广场</RouterLink
+        ><RouterLink to="/tooldeck/my-tools">我的工具</RouterLink
+        ><RouterLink to="/tooldeck/playground">在线调试</RouterLink
+        ><RouterLink to="/tooldeck/runs">运行记录</RouterLink
+        ><RouterLink to="/tooldeck/credentials">访问凭证</RouterLink
+        ><RouterLink to="/tooldeck/guide">开发文档</RouterLink></nav
       ><ThemeSwitch /><Notifications /><ElDropdown @command="navigate"
         ><button type="button" class="account-button" aria-label="账号菜单"
-          ><UserAvatar :size="32" /><span class="account-name">{{ user.info.nickname || user.info.username }}</span
-          ><svg class="account-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></button
+          ><UserAvatar :size="32" /><span class="account-name">{{
+            user.info.nickname || user.info.username
+          }}</span
+          ><svg
+            class="account-chevron"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="m7 10 5 5 5-5"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg></button
         ><template #dropdown
-          ><ElDropdownMenu><ElDropdownItem command="/tooldeck/profile">个人中心</ElDropdownItem><ElDropdownItem v-if="admin" divided command="/tooldeck/review">总后台 · 工具审核</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/nodes">站点管理 · 执行节点</ElDropdownItem><ElDropdownItem v-if="admin" command="/tooldeck/credentials">站点管理 · 服务密钥</ElDropdownItem><ElDropdownItem divided command="logout">退出登录</ElDropdownItem></ElDropdownMenu></template
+          ><ElDropdownMenu
+            ><ElDropdownItem command="/tooldeck/profile">个人中心</ElDropdownItem
+            ><ElDropdownItem v-if="admin" divided command="/tooldeck/review"
+              >总后台 · 工具审核</ElDropdownItem
+            ><ElDropdownItem v-if="admin" command="/tooldeck/nodes"
+              >站点管理 · 执行节点</ElDropdownItem
+            ><ElDropdownItem v-if="admin" command="/tooldeck/credentials"
+              >站点管理 · 服务密钥</ElDropdownItem
+            ><ElDropdownItem divided command="logout">退出登录</ElDropdownItem></ElDropdownMenu
+          ></template
         ></ElDropdown
       ></header
-    ><main class="site-content"><RouterView /></main><footer>ToolDeck · 让好用的工具，随手可得。</footer></div
+    ><main class="site-content"><RouterView /></main
+    ><footer>ToolDeck · 让好用的工具，随手可得。</footer></div
   >
 </template>
 <script setup lang="ts">
@@ -41,12 +74,16 @@
     color: var(--el-text-color-primary);
   }
   .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     height: 80px;
     display: flex;
     align-items: center;
     gap: 56px;
     padding: 0 max(24px, calc((100vw - 1240px) / 2));
-    background: var(--el-bg-color);
+    background: color-mix(in srgb, var(--el-bg-color) 94%, transparent);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--el-border-color-lighter);
   }
   .brand {
@@ -134,7 +171,12 @@
     margin-bottom: 30px;
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 20px;
-    background: linear-gradient(115deg, var(--el-color-primary-light-9), var(--el-bg-color) 65%, var(--el-color-success-light-9));
+    background: linear-gradient(
+      115deg,
+      var(--el-color-primary-light-9),
+      var(--el-bg-color) 65%,
+      var(--el-color-success-light-9)
+    );
   }
   .site-content .tooldeck-page-hero h1 {
     margin: 8px 0;
