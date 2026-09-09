@@ -1,9 +1,10 @@
 <template>
  <section v-if="run" class="result">
-  <div class="result-heading"><h3>执行结果</h3><ElTag :type="run.status==='succeeded'?'success':run.status==='failed'?'danger':'info'">{{ labels[run.status] || run.status }}</ElTag><span>{{ run.duration_ms }} ms</span><ElButton v-if="pending" text type="danger" @click="cancel">取消执行</ElButton></div>
+  <div class="result-heading"><h3>执行结果</h3><ElTag :type="run.status==='succeeded'?'success':['failed','cancel_failed'].includes(run.status)?'danger':'info'">{{ labels[run.status] || run.status }}</ElTag><span>{{ run.duration_ms }} ms</span><ElButton v-if="cancelable" text type="danger" @click="cancel">取消执行</ElButton></div>
   <p class="hint">{{ run.run_id }}</p><ElProgress v-if="pending" :percentage="50" :indeterminate="true" :show-text="false"/>
   <pre v-if="pending && streamText" class="stream-text">{{ streamText }}</pre><p v-if="streamIssue && pending" class="hint">{{streamIssue}}</p>
   <ElAlert v-if="run.error" :title="run.error" type="error" :closable="false"/>
+  <ElAlert v-if="run.cancel_error" :title="run.cancel_error" type="error" :closable="false"/>
   <ElAlert v-if="run.callback_failed" class="callback-state" :title="`结果回调最终失败（共尝试 ${run.callback_attempts || 6} 次）`" :description="run.callback_error || '回调接收方未返回成功状态'" type="error" :closable="false" show-icon/>
   <ElAlert v-else-if="run.callback_sent" class="callback-state" :title="`结果已成功回调（第 ${run.callback_attempts || 1} 次送达）`" type="success" :closable="false" show-icon/>
   <ElAlert v-else-if="run.callback_url && !pending" class="callback-state" :title="run.callback_attempts ? `回调失败，等待第 ${run.callback_attempts + 1} 次尝试` : '等待发送结果回调'" :description="run.callback_error" type="warning" :closable="false" show-icon/>
@@ -44,8 +45,9 @@ const props=defineProps<{run:Run|null}>();const emit=defineEmits(['update'])
 const wrappedResult=computed(()=>{const value=props.run?.result;return value!==null && typeof value==='object' && !Array.isArray(value) && Object.prototype.hasOwnProperty.call(value,'result')})
 const outputText=computed(()=>{const value=wrappedResult.value?props.run?.result.result:props.run?.result;if(value===undefined || value===null)return null;return typeof value==='string'?value:JSON.stringify(value,null,2)})
 const extraResult=computed(()=>{if(!wrappedResult.value)return null;const extra=Object.fromEntries(Object.entries(props.run!.result).filter(([key])=>key!=='result'));return Object.keys(extra).length?extra:null})
-const pending=computed(()=>['queued','running'].includes(props.run?.status||''))
-const labels:Record<string,string>={queued:'排队中',running:'执行中',succeeded:'已完成',failed:'失败',timed_out:'已超时',canceled:'已取消'}
+const pending=computed(()=>['queued','running','canceling'].includes(props.run?.status||''))
+const cancelable=computed(()=>['queued','running'].includes(props.run?.status||''))
+const labels:Record<string,string>={queued:'排队中',running:'执行中',canceling:'正在取消',succeeded:'已完成',failed:'失败',timed_out:'已超时',canceled:'已取消',cancel_failed:'取消失败'}
 async function download(f:Artifact){const blob=await td.blob(f.file_id);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);const remaining=Math.max(0,(f.downloads_remaining??3)-1);emit('update',{...props.run,artifacts:remaining===0?props.run!.artifacts.filter(x=>x.file_id!==f.file_id):props.run!.artifacts.map(x=>x.file_id===f.file_id?{...x,downloads_remaining:remaining}:x)})}
 const available=(f:Artifact)=>(f.downloads_remaining??3)>0&&(!f.expires_at||new Date(f.expires_at).getTime()>Date.now())
 async function cancel(){if(props.run)emit('update',await td.cancel(props.run.run_id))}

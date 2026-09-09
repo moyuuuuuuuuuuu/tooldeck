@@ -725,14 +725,14 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 				s.store.Lock()
 				run = s.store.State.Runs[run.ID]
 				s.store.Unlock()
-				if run.Status != "queued" && run.Status != "running" {
+				if !runActive(run.Status) {
 					break wait
 				}
 			}
 		}
 	}
 	code := 200
-	if run.Status == "queued" || run.Status == "running" {
+	if runActive(run.Status) {
 		code = 202
 	}
 	jsonResponse(w, code, run)
@@ -786,17 +786,55 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 		return
 	}
 	if len(parts) == 3 && parts[2] == "cancel" && r.Method == "POST" {
-		if run.Status == "queued" || run.Status == "running" {
+		if run.Status == "queued" {
 			run.Status = "canceled"
 			s.store.State.Runs[run.ID] = run
 			_ = s.store.save()
+			s.store.Unlock()
+			jsonResponse(w, 200, run)
+			return
 		}
+		if run.Status != "running" {
+			s.store.Unlock()
+			jsonResponse(w, 200, run)
+			return
+		}
+		tool := s.store.State.Tools[run.ToolID]
+		run.Status = "canceling"
+		s.store.State.Runs[run.ID] = run
+		_ = s.store.save()
 		s.store.Unlock()
 		s.cancelMu.Lock()
-		if c := s.cancels[run.ID]; c != nil {
-			c()
-		}
+		cancelExecution := s.cancels[run.ID]
 		s.cancelMu.Unlock()
+		if cancelExecution == nil {
+			run.Status = "canceled"
+			s.store.Lock()
+			s.store.State.Runs[run.ID] = run
+			_ = s.store.save()
+			s.store.Unlock()
+			jsonResponse(w, 200, run)
+			return
+		}
+		if tool.Manifest.Execution.CancelHook {
+			if err := s.runCancelHook(run, tool.Manifest); err != nil {
+				run.Status = "cancel_failed"
+				run.CancelError = err.Error()
+			} else {
+				run.Status = "canceled"
+			}
+		} else {
+			run.Status = "canceled"
+		}
+		s.store.Lock()
+		current := s.store.State.Runs[run.ID]
+		current.Status = run.Status
+		current.CancelError = run.CancelError
+		s.store.State.Runs[run.ID] = current
+		_ = s.store.save()
+		run = current
+		s.store.Unlock()
+		cancelExecution()
 		jsonResponse(w, 200, run)
 		return
 	}

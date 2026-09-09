@@ -287,9 +287,9 @@ func (s *Server) statistics(w http.ResponseWriter, r *http.Request, p Principal)
 			switch run.Status {
 			case "succeeded":
 				v.Succeeded++
-			case "failed", "timed_out":
+			case "failed", "timed_out", "cancel_failed":
 				v.Failed++
-			case "queued", "running":
+			case "queued", "running", "canceling":
 				v.Pending++
 			case "canceled":
 				v.Canceled++

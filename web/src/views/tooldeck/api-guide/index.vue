@@ -58,7 +58,7 @@
             <code>X-ToolDeck-Event</code> 和
             <code>X-ToolDeck-Run-ID</code
             >。最终失败时仅产生站内信，不发送邮件。排障时仍可使用同一凭证查询：</p
-          ><pre>GET /api/v1/runs/{run_id}</pre><p>可取消尚未结束的任务：</p
+          ><pre>GET /api/v1/runs/{run_id}</pre><p>处理中状态包括 queued、running、canceling；终态包括 succeeded、failed、timed_out、canceled、cancel_failed。可取消尚未结束的任务：</p
           ><pre>POST /api/v1/runs/{run_id}/cancel</pre>
         </section>
         <section id="files"

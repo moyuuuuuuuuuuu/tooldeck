@@ -163,7 +163,7 @@ func (s *Server) streamRun(w http.ResponseWriter, r *http.Request, p Principal, 
 				return
 			}
 		}
-		if run.Status != "queued" && run.Status != "running" {
+		if !runActive(run.Status) {
 			if run.Error != "" {
 				if !send("error", map[string]string{"message": run.Error}, 0) {
 					return

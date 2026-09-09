@@ -30,16 +30,17 @@ type callbackArtifact struct {
 }
 
 type callbackPayload struct {
-	Event      string             `json:"event"`
-	RunID      string             `json:"run_id"`
-	ToolID     string             `json:"tool_id"`
-	Status     string             `json:"status"`
-	Result     any                `json:"result"`
-	Error      string             `json:"error,omitempty"`
-	Artifacts  []callbackArtifact `json:"artifacts"`
-	CreatedAt  time.Time          `json:"created_at"`
-	StartedAt  *time.Time         `json:"started_at,omitempty"`
-	DurationMS int64              `json:"duration_ms"`
+	Event       string             `json:"event"`
+	RunID       string             `json:"run_id"`
+	ToolID      string             `json:"tool_id"`
+	Status      string             `json:"status"`
+	Result      any                `json:"result"`
+	Error       string             `json:"error,omitempty"`
+	CancelError string             `json:"cancel_error,omitempty"`
+	Artifacts   []callbackArtifact `json:"artifacts"`
+	CreatedAt   time.Time          `json:"created_at"`
+	StartedAt   *time.Time         `json:"started_at,omitempty"`
+	DurationMS  int64              `json:"duration_ms"`
 }
 
 func validateCallbackURL(raw string) error {
@@ -123,7 +124,7 @@ func sendCallback(rawURL, secret string, payload callbackPayload) error {
 }
 
 func terminalRun(status string) bool {
-	return status != "" && status != "queued" && status != "running"
+	return status != "" && !runActive(status)
 }
 
 func (s *Server) callbackWorker(ctx context.Context) {
@@ -169,7 +170,7 @@ func (s *Server) deliverNextCallback() {
 			return
 		}
 	}
-	payload := callbackPayload{Event: "tool.run.completed", RunID: selected.ID, ToolID: selected.ToolID, Status: selected.Status, Result: selected.Result, Error: selected.Error, Artifacts: []callbackArtifact{}, CreatedAt: selected.Created, StartedAt: selected.Started, DurationMS: selected.Duration}
+	payload := callbackPayload{Event: "tool.run.completed", RunID: selected.ID, ToolID: selected.ToolID, Status: selected.Status, Result: selected.Result, Error: selected.Error, CancelError: selected.CancelError, Artifacts: []callbackArtifact{}, CreatedAt: selected.Created, StartedAt: selected.Started, DurationMS: selected.Duration}
 	for _, artifact := range selected.Artifacts {
 		payload.Artifacts = append(payload.Artifacts, callbackArtifact{FileID: artifact.ID, Name: artifact.Name, MIME: artifact.MIME, Size: artifact.Size, DownloadURL: s.artifactURL(artifact)})
 	}

@@ -130,6 +130,8 @@ curl -X POST http://localhost:18088/api/v1/tools/TOOL_ID/runs \
 | GET | `/api/v1/runs/{id}` | 查询状态、结果及产物 |
 | POST | `/api/v1/runs/{id}/cancel` | 取消任务 |
 | GET | `/api/v1/runs/{id}/logs` | 查看执行日志 |
+
+工具可通过 `execution.cancel_hook: true` 声明取消钩子。运行中的任务被取消时，平台会先以 `TOOLDECK_ACTION=cancel` 在原容器中再次调用入口，再停止主任务；第三方任务 ID 等取消状态可写入 `TOOLDECK_STATE_FILE`。钩子失败时任务终态为 `cancel_failed`，详情见 `cancel_error`。
 | POST | `/api/v1/files` | 上传文件，multipart `file` 字段 |
 | GET | `/api/v1/files/{id}` | 授权下载文件 |
 

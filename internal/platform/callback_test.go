@@ -111,3 +111,28 @@ func TestCallbackSuccessStopsRetries(t *testing.T) {
 		t.Fatal("successful callback repeated")
 	}
 }
+
+func TestCallbackWaitsForCancelHookAndIncludesFailure(t *testing.T) {
+	s := testServer(t)
+	run := Run{ID: "run_cancel", ToolID: "tool", Status: "canceling", CallbackURL: "https://callback.example/result", Created: time.Now()}
+	s.store.State.Runs[run.ID] = run
+	called := false
+	s.callbackSender = func(_ string, _ string, payload callbackPayload) error {
+		called = true
+		if payload.Status != "cancel_failed" || payload.CancelError != "provider rejected cancellation" {
+			t.Fatalf("cancel failure missing from callback: %+v", payload)
+		}
+		return nil
+	}
+	s.deliverNextCallback()
+	if called {
+		t.Fatal("callback delivered before cancel hook completed")
+	}
+	run.Status = "cancel_failed"
+	run.CancelError = "provider rejected cancellation"
+	s.store.State.Runs[run.ID] = run
+	s.deliverNextCallback()
+	if !called || !s.store.State.Runs[run.ID].CallbackSent {
+		t.Fatal("terminal cancel failure callback was not delivered")
+	}
+}

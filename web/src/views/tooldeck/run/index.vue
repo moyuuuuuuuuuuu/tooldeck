@@ -173,7 +173,7 @@
         (tool.value?.manifest.ui_schema?.[b]?.order ?? 0)
     )
   )
-  const pending = computed(() => ['queued', 'running'].includes(result.value?.status || ''))
+  const pending = computed(() => ['queued', 'running', 'canceling'].includes(result.value?.status || ''))
   const owner = computed(
     () => user.info.roles?.includes('R_SUPER') || tool.value?.owner === String(user.info.id)
   )

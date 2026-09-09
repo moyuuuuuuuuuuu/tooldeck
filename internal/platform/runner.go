@@ -72,14 +72,10 @@ func (s *Server) execute(parent context.Context, r Run) {
 	m := tool.Manifest
 	ctx, cancel := context.WithTimeout(parent, time.Duration(m.Execution.Timeout)*time.Second)
 	defer cancel()
-	s.cancelMu.Lock()
-	s.cancels[r.ID] = cancel
-	s.cancelMu.Unlock()
-	defer func() { s.cancelMu.Lock(); delete(s.cancels, r.ID); s.cancelMu.Unlock() }()
 	s.store.Lock()
-	wasCanceled := s.store.State.Runs[r.ID].Status == "canceled"
+	shouldStop := s.store.State.Runs[r.ID].Status != "running"
 	s.store.Unlock()
-	if wasCanceled {
+	if shouldStop {
 		return
 	}
 	job := filepath.Join(s.store.Root, "jobs", r.ID)
@@ -99,10 +95,13 @@ func (s *Server) execute(parent context.Context, r Run) {
 		}
 		s.store.Lock()
 		defer s.store.Unlock()
-		if s.store.State.Runs[r.ID].Status == "canceled" {
-			r.Status = "canceled"
+		currentRun := s.store.State.Runs[r.ID]
+		currentStatus := currentRun.Status
+		if currentStatus == "canceled" || currentStatus == "cancel_failed" || currentStatus == "canceling" {
+			r.Status = currentStatus
 		}
-		r.Events = s.store.State.Runs[r.ID].Events
+		r.CancelError = currentRun.CancelError
+		r.Events = currentRun.Events
 		s.store.State.Runs[r.ID] = r
 		if e := s.store.save(); e != nil {
 			fmt.Fprintln(os.Stderr, e)
@@ -123,7 +122,7 @@ func (s *Server) execute(parent context.Context, r Run) {
 		finish(err)
 		return
 	}
-	env := []string{"TOOLDECK_OUTPUT_DIR=/job/output", "HOME=/tmp", "TMPDIR=/tmp", "GOCACHE=/tmp/go-cache", "GOMODCACHE=/tmp/go-mod", "PYTHONDONTWRITEBYTECODE=1"}
+	env := []string{"TOOLDECK_OUTPUT_DIR=/job/output", "TOOLDECK_STATE_FILE=/tmp/tooldeck-state.json", "TOOLDECK_RUN_ID=" + r.ID, "TOOLDECK_ACTION=run", "HOME=/tmp", "TMPDIR=/tmp", "GOCACHE=/tmp/go-cache", "GOMODCACHE=/tmp/go-mod", "PYTHONDONTWRITEBYTECODE=1"}
 	redactions := []string{}
 	s.store.Lock()
 	for _, name := range m.Secrets {
@@ -241,6 +240,21 @@ func (s *Server) execute(parent context.Context, r Run) {
 	} else {
 		cmd.Stderr = stderr
 	}
+	// Register cancellation and re-check the persisted state atomically with
+	// respect to the cancel endpoint. This prevents a canceled setup from
+	// launching a container after the endpoint has already returned.
+	s.cancelMu.Lock()
+	s.store.Lock()
+	shouldStop = s.store.State.Runs[r.ID].Status != "running"
+	if !shouldStop {
+		s.cancels[r.ID] = cancel
+	}
+	s.store.Unlock()
+	s.cancelMu.Unlock()
+	if shouldStop {
+		return
+	}
+	defer func() { s.cancelMu.Lock(); delete(s.cancels, r.ID); s.cancelMu.Unlock() }()
 	err = cmd.Run()
 	if stream != nil {
 		if e := stream.finish(); err == nil && e != nil {
@@ -292,6 +306,41 @@ func (s *Server) execute(parent context.Context, r Run) {
 		err = codeError
 	}
 	finish(err)
+}
+
+// runCancelHook invokes the tool entrypoint inside the still-running container.
+// The hook receives the original input on stdin and can read state written by
+// the main process at TOOLDECK_STATE_FILE.
+func (s *Server) runCancelHook(r Run, m Manifest) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	input, _ := json.Marshal(r.Input)
+	name := "tooldeck-run-" + r.ID
+	for attempt := 0; ; attempt++ {
+		cmd := exec.CommandContext(ctx, "docker", "exec", "-i", "--env", "TOOLDECK_ACTION=cancel", "--env", "TOOLDECK_RUN_ID="+r.ID, name, "/entrypoint.sh", m.Entrypoint)
+		cmd.Stdin = bytes.NewReader(input)
+		output := &cappedBuffer{Limit: 1 << 20}
+		cmd.Stdout = output
+		cmd.Stderr = output
+		err := cmd.Run()
+		if err == nil {
+			return nil
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return errors.New("cancel hook timed out after 15 seconds")
+		}
+		message := strings.ToLower(strings.TrimSpace(output.String()))
+		containerPending := strings.HasPrefix(message, "error response from daemon: no such container:") ||
+			(strings.HasPrefix(message, "error response from daemon: container ") && strings.Contains(message, " is not running"))
+		if !containerPending || attempt >= 20 {
+			return fmt.Errorf("cancel hook failed: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			return errors.New("cancel hook timed out after 15 seconds")
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 func (s *Server) resolveFiles(ctx context.Context, schema Schema, value any, owner, job string) error {
 	switch schema.Type {

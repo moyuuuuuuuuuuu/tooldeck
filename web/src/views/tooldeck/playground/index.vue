@@ -127,7 +127,7 @@
         return
       }
       activeRun.value = started
-      while (['queued', 'running'].includes(activeRun.value?.status || '')) {
+      while (['queued', 'running', 'canceling'].includes(activeRun.value?.status || '')) {
         if (current !== generation) return
         await delay()
         if (current !== generation) return
@@ -141,10 +141,11 @@
             succeeded: '运行完成',
             failed: '运行失败',
             timed_out: '运行超时',
-            canceled: '已停止'
+            canceled: '已停止',
+            cancel_failed: '取消失败'
           } as Record<string, string>
         )[activeRun.value!.status] || activeRun.value!.status
-      error.value = activeRun.value?.error || ''
+      error.value = activeRun.value?.cancel_error || activeRun.value?.error || ''
     } catch (e) {
       if (current === generation) {
         status.value = '请求失败'
@@ -158,7 +159,7 @@
     generation++
     busy.value = false
     status.value = '已停止等待'
-    if (activeRun.value && ['queued', 'running'].includes(activeRun.value.status)) {
+    if (activeRun.value && ['queued', 'running', 'canceling'].includes(activeRun.value.status)) {
       activeRun.value = await td.cancel(activeRun.value.run_id)
       status.value = '已停止'
     }

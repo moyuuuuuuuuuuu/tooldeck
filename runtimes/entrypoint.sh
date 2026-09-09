@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-if [ -S /job/proxy.sock ]; then
+if [ "${TOOLDECK_ACTION:-run}" = "run" ] && [ -S /job/proxy.sock ]; then
   socat TCP4-LISTEN:18081,bind=127.0.0.1,reuseaddr,fork UNIX-CONNECT:/job/proxy.sock &
   attempt=0
   until socat -T1 - TCP4:127.0.0.1:18081 </dev/null >/dev/null 2>/dev/null; do
@@ -25,6 +25,10 @@ run_tool() {
       ;;
   esac
 }
+if [ "${TOOLDECK_ACTION:-run}" = "cancel" ]; then
+  run_tool "$@"
+  exit $?
+fi
 run_tool "$@" > /tmp/tooldeck-result.json
 # Export before the container stops: tmpfs contents disappear on stop.
 tar -cf - -C /tmp tooldeck-result.json -C /job output

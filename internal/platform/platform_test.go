@@ -131,12 +131,16 @@ func TestSecretEncryptionAndRestart(t *testing.T) {
 		t.Fatal(e)
 	}
 	s.store.State.Runs["test"] = Run{ID: "test", Status: "running"}
+	s.store.State.Runs["canceling"] = Run{ID: "canceling", Status: "canceling"}
 	if e = s.store.save(); e != nil {
 		t.Fatal(e)
 	}
 	st, e := OpenStore(s.store.Root)
 	if e != nil || st.State.Runs["test"].Status != "failed" {
 		t.Fatal("restart replayed side effect")
+	}
+	if st.State.Runs["canceling"].Status != "cancel_failed" || st.State.Runs["canceling"].CancelError == "" {
+		t.Fatal("interrupted cancel hook was hidden")
 	}
 }
 func TestForeignFileDenied(t *testing.T) {
@@ -177,5 +181,62 @@ func TestIdempotencyAndCancel(t *testing.T) {
 		if w.Code != 200 || s.store.State.Runs[id].Status != "canceled" {
 			t.Fatal("cancel failed")
 		}
+	}
+}
+
+func TestRunningCancelInvokesToolHook(t *testing.T) {
+	s := testServer(t)
+	var m Manifest
+	if err := json.Unmarshal([]byte(manifestJSON), &m); err != nil {
+		t.Fatal(err)
+	}
+	m.Execution.CancelHook = true
+	s.store.State.Tools["tool1"] = Tool{ID: "tool1", Manifest: m}
+	s.store.State.Runs["run_hook"] = Run{ID: "run_hook", ToolID: "tool1", Owner: "key1", Status: "running", Input: map[string]any{"text": "video"}}
+	s.store.State.Keys["key1"] = Credential{ID: "key1", Hash: hash("td_test"), Tools: []string{"echo"}, Expires: time.Now().Add(time.Hour)}
+	s.cancels["run_hook"] = func() {}
+
+	dir := t.TempDir()
+	docker := filepath.Join(dir, "docker")
+	if err := os.WriteFile(docker, []byte("#!/bin/sh\ncase \"$*\" in *TOOLDECK_ACTION=cancel*) exit 0;; *) exit 1;; esac\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/runs/run_hook/cancel", nil)
+	r.Header.Set("X-API-Key", "td_test")
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	if w.Code != 200 || s.store.State.Runs["run_hook"].Status != "canceled" {
+		t.Fatalf("cancel hook was not applied: code=%d run=%+v", w.Code, s.store.State.Runs["run_hook"])
+	}
+}
+
+func TestCancelHookFailureIsVisible(t *testing.T) {
+	s := testServer(t)
+	var m Manifest
+	if err := json.Unmarshal([]byte(manifestJSON), &m); err != nil {
+		t.Fatal(err)
+	}
+	m.Execution.CancelHook = true
+	s.store.State.Tools["tool1"] = Tool{ID: "tool1", Manifest: m}
+	s.store.State.Runs["run_hook"] = Run{ID: "run_hook", ToolID: "tool1", Owner: "key1", Status: "running", Input: map[string]any{"text": "video"}}
+	s.store.State.Keys["key1"] = Credential{ID: "key1", Hash: hash("td_test"), Tools: []string{"echo"}, Expires: time.Now().Add(time.Hour)}
+	s.cancels["run_hook"] = func() {}
+
+	dir := t.TempDir()
+	docker := filepath.Join(dir, "docker")
+	if err := os.WriteFile(docker, []byte("#!/bin/sh\nexit 7\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/runs/run_hook/cancel", nil)
+	r.Header.Set("X-API-Key", "td_test")
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	run := s.store.State.Runs["run_hook"]
+	if w.Code != 200 || run.Status != "cancel_failed" || run.CancelError == "" {
+		t.Fatalf("cancel failure was hidden: code=%d run=%+v", w.Code, run)
 	}
 }

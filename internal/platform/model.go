@@ -52,10 +52,11 @@ type Manifest struct {
 	Runtime        string     `json:"runtime"`
 	Entrypoint     string     `json:"entrypoint"`
 	Execution      struct {
-		Stream  bool   `json:"stream,omitempty"`
-		Mode    string `json:"mode"`
-		Timeout int    `json:"timeout_seconds"`
-		Memory  int    `json:"memory_mb"`
+		Stream     bool   `json:"stream,omitempty"`
+		CancelHook bool   `json:"cancel_hook,omitempty"`
+		Mode       string `json:"mode"`
+		Timeout    int    `json:"timeout_seconds"`
+		Memory     int    `json:"memory_mb"`
 	} `json:"execution"`
 	Network struct {
 		Enabled      bool     `json:"enabled"`
@@ -113,12 +114,18 @@ type Run struct {
 	Input            map[string]any `json:"input"`
 	Result           any            `json:"result"`
 	Error            string         `json:"error,omitempty"`
+	CancelError      string         `json:"cancel_error,omitempty"`
 	Logs             string         `json:"logs"`
 	Artifacts        []File         `json:"artifacts"`
 	Created          time.Time      `json:"created_at"`
 	Started          *time.Time     `json:"started_at,omitempty"`
 	Duration         int64          `json:"duration_ms"`
 }
+
+func runActive(status string) bool {
+	return status == "queued" || status == "running" || status == "canceling"
+}
+
 type File struct {
 	Storage            string    `json:"storage,omitempty"`
 	ObjectKey          string    `json:"object_key,omitempty"`
@@ -208,6 +215,10 @@ func OpenStore(root string) (*Store, error) {
 		if r.Status == "running" {
 			r.Status = "failed"
 			r.Error = "Worker restarted; task was not retried to avoid duplicate side effects"
+			s.State.Runs[id] = r
+		} else if r.Status == "canceling" {
+			r.Status = "cancel_failed"
+			r.CancelError = "Worker restarted before the cancel hook completed; verify the provider task state"
 			s.State.Runs[id] = r
 		}
 	}
