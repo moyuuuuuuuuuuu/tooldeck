@@ -7,7 +7,7 @@
   "runtime": "php",
   "runtime_version": "8.1",
   "entrypoint": "main.php",
-  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128},
+  "execution": {"mode": "sync", "timeout_seconds": 30, "memory_mb": 128, "cancel_hook": true},
   "network": {"enabled": false, "allowed_hosts": []},
   "secrets": [],
   "env": [],
