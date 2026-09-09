@@ -2,7 +2,7 @@
 
 ZIP 根目录包含 `tooldeck.json` 与入口文件。示例见 `examples/`。
 
-五种空白工具模板均提供独立源码分支，分支根目录只包含可上传的工具包代码，不包含 ToolDeck 平台本体：[PHP + Composer](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/php-tool-example)、[JavaScript](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/js-tool-example)、[Node.js + npm](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/node-tool-example)、[Python](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/python-tool-example)、[Go Modules](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/go-tool-example)。
+五种空白工具模板均提供独立版本标签，标签根目录只包含可上传的工具包代码，不包含 ToolDeck 平台本体：[PHP + Composer v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-php-v1.0.0)、[JavaScript v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-js-v1.0.0)、[Node.js + npm v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-node-v1.0.0)、[Python v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-python-v1.0.0)、[Go Modules v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-go-v1.0.0)。
 
 ## 输入与输出
 

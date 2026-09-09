@@ -89,7 +89,7 @@ python scripts/package-examples.py
 在工具库上传 `work/examples/` 下的 ZIP。图片表单示例不调用真实 AI 服务。
 `examples/blank-php`、`blank-js`、`blank-node`、`blank-python`、`blank-go` 提供五种运行时的空白工程模板；PHP 模板使用 Composer PSR-4，Node 使用 npm/ES Module，Go 使用 Go Modules，其余模板也按语言习惯组织面向对象边界。
 
-每种模板也提供只包含工具包源码的独立分支，分支根目录可直接克隆或打包：[PHP](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/php-tool-example)、[JavaScript](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/js-tool-example)、[Node.js](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/node-tool-example)、[Python](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/python-tool-example)、[Go](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/go-tool-example)。
+每种模板也提供只包含工具包源码的版本标签，标签根目录可直接下载或打包：[PHP v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-php-v1.0.0)、[JavaScript v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-js-v1.0.0)、[Node.js v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-node-v1.0.0)、[Python v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-python-v1.0.0)、[Go v1.0.0](https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-go-v1.0.0)。
 
 详细格式见 [工具包规范](docs/tool-packages.md)，也可查看站内 **开发指引**。
 

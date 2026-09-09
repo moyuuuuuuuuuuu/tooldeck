@@ -40,13 +40,13 @@ my-tool.zip
                     ><div
                       ><a :href="'/tool-templates/' + template.file" download>下载 ZIP</a
                       ><a :href="template.source" target="_blank" rel="noopener noreferrer"
-                        >查看源码分支</a
+                        >查看版本源码</a
                       ></div
                     ></div
                   ></div
                 ><p
-                  >空白模板可直接上传，也可从独立源码分支克隆；模板分支根目录就是工具包，不包含
-                  ToolDeck 平台本体。PHP 使用 Composer PSR-4，Node 使用 npm/ES Module，Go 使用 Go
+                  >空白模板可直接上传，也可从独立版本标签下载；标签根目录就是工具包，不包含 ToolDeck
+                  平台本体。PHP 使用 Composer PSR-4，Node 使用 npm/ES Module，Go 使用 Go
                   Modules。</p
                 ><pre>{{ source }}</pre></section
               ><section id="step-1"
@@ -219,27 +219,27 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
     {
       label: 'PHP 8.1 + Composer',
       file: 'blank-php.zip',
-      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/php-tool-example'
+      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-php-v1.0.0'
     },
     {
       label: 'JavaScript',
       file: 'blank-js.zip',
-      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/js-tool-example'
+      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-js-v1.0.0'
     },
     {
       label: 'Node.js 22',
       file: 'blank-node.zip',
-      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/node-tool-example'
+      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-node-v1.0.0'
     },
     {
       label: 'Python 3.12',
       file: 'blank-python.zip',
-      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/python-tool-example'
+      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-python-v1.0.0'
     },
     {
       label: 'Go 1.22',
       file: 'blank-go.zip',
-      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/go-tool-example'
+      source: 'https://github.com/moyuuuuuuuuuuu/tooldeck/tree/tool-go-v1.0.0'
     }
   ]
   const cancelLanguage = ref('php')
