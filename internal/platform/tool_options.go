@@ -26,8 +26,8 @@ func catalogTools(tools []Tool) []Tool {
 		if t.Playground || t.Withdrawn || (t.BuildStatus != "" && t.BuildStatus != "ready") || (t.ReviewStatus != "" && t.ReviewStatus != "approved") {
 			continue
 		}
-		key := t.Manifest.Name
-		if key == "" {
+		key := toolOwner(t) + "\x00" + t.Manifest.Name
+		if t.Manifest.Name == "" {
 			key = t.ID
 		}
 		current, ok := latest[key]
