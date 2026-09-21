@@ -15,8 +15,7 @@ try {
         python { "python:${version}-slim-bookworm" }
         go { "golang:${version}-bookworm" }
       }
-      $revision = if ($runtime -eq 'php' -and $version -in @('8.0', '8.1')) { 'build5' } else { 'build4' }
-      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-${revision}" -f "runtimes/${runtime}.Dockerfile" .
+      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-build5" -f "runtimes/${runtime}.Dockerfile" .
       if ($LASTEXITCODE -ne 0) { throw "Runtime build failed: ${runtime} ${version}" }
     }
   }

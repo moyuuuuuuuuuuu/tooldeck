@@ -10,8 +10,6 @@ for runtime in php node python go; do
    python) base="python:$version-slim-bookworm";;
    go) base="golang:$version-bookworm";;
   esac
-  revision=build4
-  if [ "$runtime" = php ] && { [ "$version" = 8.0 ] || [ "$version" = 8.1 ]; }; then revision=build5; fi
-  docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-$runtime:$version-$revision" -f "runtimes/$runtime.Dockerfile" .
+  docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-$runtime:$version-build5" -f "runtimes/$runtime.Dockerfile" .
  done
 done
