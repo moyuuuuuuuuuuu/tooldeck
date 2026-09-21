@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 )
 
@@ -53,7 +52,7 @@ func (s *Server) guestEndpoint(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(path, "/")
 	switch {
 	case path == "tools" && r.Method == "GET":
-		list := []Tool{}
+		available := []Tool{}
 		s.store.Lock()
 		for _, t := range s.store.State.Tools {
 			if guestVisibleTool(t) {
@@ -61,11 +60,11 @@ func (s *Server) guestEndpoint(w http.ResponseWriter, r *http.Request) {
 				t.BuildError = ""
 				t.BuildImage = ""
 				t.Artifact = ""
-				list = append(list, t)
+				available = append(available, t)
 			}
 		}
 		s.store.Unlock()
-		sort.Slice(list, func(i, j int) bool { return list[i].Created.After(list[j].Created) })
+		list := catalogTools(available)
 		jsonResponse(w, 200, list)
 	case len(parts) == 3 && parts[0] == "tools" && parts[2] == "runs" && r.Method == "POST":
 		s.createRun(w, r, p, parts[1])

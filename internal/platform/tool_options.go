@@ -18,6 +18,31 @@ func canUseTool(p Principal, t Tool) bool {
 	return !t.Withdrawn && (t.BuildStatus == "" || t.BuildStatus == "ready") && (t.Public == nil || *t.Public) && (t.ReviewStatus == "" || t.ReviewStatus == "approved")
 }
 
+// catalogTools keeps version management separate from discovery. A pending new
+// version must not hide the currently published version of the same tool.
+func catalogTools(tools []Tool) []Tool {
+	latest := map[string]Tool{}
+	for _, t := range tools {
+		if t.Playground || t.Withdrawn || (t.BuildStatus != "" && t.BuildStatus != "ready") || (t.ReviewStatus != "" && t.ReviewStatus != "approved") {
+			continue
+		}
+		key := t.Manifest.Name
+		if key == "" {
+			key = t.ID
+		}
+		current, ok := latest[key]
+		if !ok || t.Created.After(current.Created) {
+			latest[key] = t
+		}
+	}
+	list := make([]Tool, 0, len(latest))
+	for _, t := range latest {
+		list = append(list, t)
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Created.After(list[j].Created) })
+	return list
+}
+
 func (s *Server) notifications(w http.ResponseWriter, r *http.Request, p Principal, parts []string) {
 	if !p.Session {
 		fail(w, 403, "user session required")

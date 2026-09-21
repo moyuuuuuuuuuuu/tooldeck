@@ -190,21 +190,22 @@ func (s *Server) Handler() http.Handler {
 			s.notifications(w, r, p, parts)
 		case path == "tools" && r.Method == "GET":
 			s.store.Lock()
-			list := []Tool{}
+			available := []Tool{}
 			for _, t := range s.store.State.Tools {
-				if !t.Playground && !t.Withdrawn && canUseTool(p, t) {
-					visible := t
-					if !p.Admin && toolOwner(t) != p.owner() {
-						visible.BuildLog = ""
-						visible.BuildError = ""
-						visible.BuildImage = ""
-						visible.Artifact = ""
-					}
-					list = append(list, visible)
+				if canUseTool(p, t) {
+					available = append(available, t)
 				}
 			}
 			s.store.Unlock()
-			sort.Slice(list, func(i, j int) bool { return list[i].Created.After(list[j].Created) })
+			list := catalogTools(available)
+			for i := range list {
+				if !p.Admin && toolOwner(list[i]) != p.owner() {
+					list[i].BuildLog = ""
+					list[i].BuildError = ""
+					list[i].BuildImage = ""
+					list[i].Artifact = ""
+				}
+			}
 			jsonResponse(w, 200, list)
 		case path == "tools" && r.Method == "POST":
 			if !p.Session {

@@ -18,6 +18,7 @@ func TestGuestIsolation(t *testing.T) {
 	for _, kind := range []string{"env", "secret", "private", "pending", "rejected", "withdrawn", "building", "playground"} {
 		x := tool
 		x.ID = kind
+		x.Manifest.Name = kind
 		switch kind {
 		case "env":
 			x.Manifest.Env = []EnvField{{Name: "API_KEY"}}
