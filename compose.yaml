@@ -1,7 +1,13 @@
 name: tooldeck
 services:
   platform:
-    build: .
+    build:
+      context: .
+      network: "${TOOLDECK_BUILD_NETWORK:-default}"
+      args:
+        HTTP_PROXY: "${TOOLDECK_BUILD_HTTP_PROXY:-}"
+        HTTPS_PROXY: "${TOOLDECK_BUILD_HTTPS_PROXY:-}"
+        NO_PROXY: "${TOOLDECK_BUILD_NO_PROXY:-localhost,127.0.0.1}"
     image: tooldeck:dev
     restart: unless-stopped
     ports:

@@ -215,6 +215,17 @@ cd /volume1/docker/tooldeck
 
 NAS 的 `.env` 需要设置 `TOOLDECK_DATA_MOUNT=/volume1/docker/tooldeck/data`、`TOOLDECK_HOST_DATA=/volume1/docker/tooldeck/data`、`TOOLDECK_DATA_VOLUME=` 和 `TOOLDECK_SANDBOX_PROFILE=synology`。留空的 `TOOLDECK_DATA_VOLUME` 会关闭 Docker 命名卷路径探测，让运行节点使用 NAS 上明确配置的宿主机目录。不要执行 `docker compose down -v`，也不要把生产 `.env`、`data` 或构建依赖提交到 Git。
 
+如果 NAS 需要通过宿主机本地代理下载 Go、npm 和系统依赖，可在 `.env` 增加以下配置（将 `7890` 换成实际 HTTP 或 mixed 代理端口）：
+
+```dotenv
+TOOLDECK_BUILD_NETWORK=host
+TOOLDECK_BUILD_HTTP_PROXY=http://127.0.0.1:7890
+TOOLDECK_BUILD_HTTPS_PROXY=http://127.0.0.1:7890
+TOOLDECK_BUILD_NO_PROXY=localhost,127.0.0.1
+```
+
+这些变量仅在镜像构建阶段生效，不会注入平台服务或工具执行容器。使用 `host` 构建网络后，构建步骤中的 `127.0.0.1` 指向 NAS 宿主机；代理程序必须允许来自本机的连接。修改后运行 `sudo docker compose build --progress=plain platform`，成功后再运行 `sudo docker compose up -d`。
+
 匿名用户只能在 ToolDeck 同源网页中运行公开、已审核、已构建且不需要环境变量的工具。`/api/v1` 下的所有工具查询、执行、流式事件和结果接口均要求有效的 API Key、OAuth Token 或登录会话；匿名访客 Cookie 不具备 API 调用权限。
 
 ## 执行隔离与当前边界
