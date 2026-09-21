@@ -173,6 +173,9 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		runtime = "go"
 	}
 	buildRevision := "build4"
+	if runtime == "php" && (t.Manifest.RuntimeVersion == "8.0" || t.Manifest.RuntimeVersion == "8.1") {
+		buildRevision = "build5"
+	}
 	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-"+buildRevision, "--format", "{{.Id}}").Output()
 	if e != nil {
 		version, versionErr := runtimeVersion(t.Manifest)
