@@ -12,8 +12,60 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
+
+type buildLogWriter struct {
+	mu       sync.Mutex
+	server   *Server
+	toolID   string
+	buffer   *cappedBuffer
+	lastSave time.Time
+	interval time.Duration
+	timer    *time.Timer
+}
+
+func (w *buildLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n, err := w.buffer.Write(p)
+	if w.lastSave.IsZero() || time.Since(w.lastSave) >= w.interval {
+		w.persistLocked()
+		w.lastSave = time.Now()
+	} else if w.timer == nil {
+		remaining := w.interval - time.Since(w.lastSave)
+		w.timer = time.AfterFunc(remaining, func() {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			w.timer = nil
+			w.persistLocked()
+			w.lastSave = time.Now()
+		})
+	}
+	return n, err
+}
+
+func (w *buildLogWriter) Close() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.timer != nil {
+		w.timer.Stop()
+		w.timer = nil
+	}
+}
+
+func (w *buildLogWriter) persistLocked() {
+	w.server.store.Lock()
+	defer w.server.store.Unlock()
+	tool, ok := w.server.store.State.Tools[w.toolID]
+	if !ok || tool.BuildStatus != "building" {
+		return
+	}
+	tool.BuildLog = w.buffer.String()
+	w.server.store.State.Tools[w.toolID] = tool
+	_ = w.server.store.save()
+}
 
 func (s *Server) buildEndpoint(w http.ResponseWriter, r *http.Request, p Principal, id string) {
 	if !p.Session {
@@ -88,6 +140,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	var buildErr error
 	var image string
 	logs := &cappedBuffer{Limit: 1 << 20}
+	liveLogs := &buildLogWriter{server: s, toolID: t.ID, buffer: logs, interval: 2 * time.Second}
 	defer func() {
 		_ = os.RemoveAll(job)
 		s.store.Lock()
@@ -109,6 +162,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 			fmt.Fprintln(os.Stderr, "build save failed:", e)
 		}
 	}()
+	defer liveLogs.Close()
 	runtime := t.Manifest.Runtime
 	switch runtime {
 	case "js":
@@ -140,12 +194,12 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		case "go":
 			base = "golang:" + version + "-bookworm"
 		}
-		logs.Write([]byte("首次使用该版本，正在准备运行环境...\n"))
+		liveLogs.Write([]byte("首次使用该版本，正在准备运行环境...\n"))
 		prepareCtx, prepareCancel := context.WithTimeout(parent, 20*time.Minute)
 		tag := "tooldeck-runtime-" + runtime + ":" + version + "-build2"
 		prepare := exec.CommandContext(prepareCtx, "docker", "build", "--progress=plain", "--build-arg", "BASE_IMAGE="+base, "-t", tag, "-f", "/runtime-context/runtimes/"+runtime+".Dockerfile", "/runtime-context")
-		prepare.Stdout = logs
-		prepare.Stderr = logs
+		prepare.Stdout = liveLogs
+		prepare.Stderr = liveLogs
 		prepareErr := prepare.Run()
 		prepareCancel()
 		if prepareErr != nil {
@@ -179,7 +233,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	args := []string{"run", "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "256", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--tmpfs", "/build:rw,exec,nosuid,nodev,size=536870912,mode=1777", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=268435456,mode=1777", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "packages", t.ID) + ",dst=/source,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", artifact) + ",dst=/job,readonly", "--env", "HOME=/tmp", "--env", "GOCACHE=/tmp/go-cache", "--env", "GOMODCACHE=/tmp/go-mod", "--entrypoint", "/build.sh", image, t.Manifest.Entrypoint, t.Manifest.BuildCommand}
 	args = sandboxArgs(args)
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Stderr = logs
+	cmd.Stderr = liveLogs
 	pipe, e := cmd.StdoutPipe()
 	if e != nil {
 		buildErr = e

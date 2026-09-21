@@ -7,7 +7,44 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+func TestBuildLogWriterPersistsIncrementalOutput(t *testing.T) {
+	s := testServer(t)
+	s.store.State.Tools["building"] = Tool{ID: "building", BuildStatus: "building"}
+	logs := &cappedBuffer{Limit: 1 << 20}
+	w := &buildLogWriter{server: s, toolID: "building", buffer: logs, interval: time.Hour}
+	if _, err := w.Write([]byte("downloading dependencies\n")); err != nil {
+		t.Fatal(err)
+	}
+	s.store.Lock()
+	got := s.store.State.Tools["building"].BuildLog
+	s.store.Unlock()
+	if got != "downloading dependencies\n" {
+		t.Fatalf("incremental log missing: %q", got)
+	}
+	reopened, err := OpenStore(s.store.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.State.Tools["building"].BuildLog; got != "downloading dependencies\n" {
+		t.Fatalf("incremental log was not persisted: %q", got)
+	}
+	w.interval = 20 * time.Millisecond
+	w.lastSave = time.Now()
+	if _, err = w.Write([]byte("building\n")); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(w.Close)
+	time.Sleep(60 * time.Millisecond)
+	s.store.Lock()
+	got = s.store.State.Tools["building"].BuildLog
+	s.store.Unlock()
+	if got != "downloading dependencies\nbuilding\n" {
+		t.Fatalf("trailing log burst was not persisted: %q", got)
+	}
+}
 
 func TestAuthorStartsPendingBuild(t *testing.T) {
 	s := testServer(t)
