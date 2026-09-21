@@ -226,6 +226,8 @@ TOOLDECK_BUILD_NO_PROXY=localhost,127.0.0.1
 
 这些变量仅在镜像构建阶段生效，不会注入平台服务或工具执行容器。使用 `host` 构建网络后，构建步骤中的 `127.0.0.1` 指向 NAS 宿主机；代理程序必须允许来自本机的连接。修改后运行 `sudo docker compose build --progress=plain platform`，成功后再运行 `sudo docker compose up -d`。
 
+Compose 还会在构建容器中将 `docker.internal` 动态映射到 Docker 的实际宿主机网关，避免手写可能不正确的 `172.17.0.1`。代理允许 Docker 网桥访问时，也可以不启用 host 构建网络，直接使用 `http://docker.internal:7890` 作为构建代理地址。
+
 匿名用户只能在 ToolDeck 同源网页中运行公开、已审核、已构建且不需要环境变量的工具。`/api/v1` 下的所有工具查询、执行、流式事件和结果接口均要求有效的 API Key、OAuth Token 或登录会话；匿名访客 Cookie 不具备 API 调用权限。
 
 ## 执行隔离与当前边界
