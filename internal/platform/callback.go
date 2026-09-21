@@ -163,6 +163,7 @@ func (s *Server) deliverNextCallback() {
 			selected.CallbackAttempts = len(callbackRetryDelays) + 1
 			selected.CallbackFailed = true
 			selected.CallbackError = "回调密钥解密失败"
+			s.store.notice(selected.Owner, "callback", selected.ID, "异步结果回调最终失败")
 			s.store.State.Runs[selected.ID] = selected
 			delete(s.store.State.CallbackSecrets, selected.ID)
 			_ = s.store.save()
@@ -202,6 +203,9 @@ func (s *Server) deliverNextCallback() {
 		} else {
 			current.CallbackNext = time.Now().Add(callbackRetryDelays[current.CallbackAttempts-1])
 		}
+	}
+	if current.CallbackFailed {
+		s.store.notice(current.Owner, "callback", current.ID, "异步结果回调最终失败")
 	}
 	s.store.State.Runs[current.ID] = current
 	if err := s.store.save(); err != nil {

@@ -150,6 +150,8 @@ func (s *Server) reviewEndpoint(w http.ResponseWriter, r *http.Request, p Princi
 			fail(w, 500, e)
 			return
 		}
+		s.store.notice(toolOwner(t), "review", t.ID, "工具审核结果："+t.ReviewStatus)
+		_ = s.store.save()
 		jsonResponse(w, 200, t)
 		return
 	}

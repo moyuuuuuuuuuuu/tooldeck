@@ -47,7 +47,14 @@ func TestToolEnvironmentIsolation(t *testing.T) {
 		t.Fatal(values, e)
 	}
 	call(bob, "GET", "", 200)
-	data, _ := os.ReadFile(filepath.Join(s.store.Root, "state.json"))
+	snapshot := filepath.Join(t.TempDir(), "snapshot.json")
+	if err := ExportState(s.store.Root, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if strings.Contains(string(data), "secret-value") {
 		t.Fatal("plaintext on disk")
 	}

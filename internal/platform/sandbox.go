@@ -5,6 +5,9 @@ import "os"
 // Compatibility is opt-in for Synology kernels lacking CFS, PID and cgroup namespace support.
 func sandboxArgs(args []string) []string {
 	limits := []string{"--init", "--ipc", "private", "--shm-size", "16m", "--ulimit", "core=0:0", "--ulimit", "nofile=1024:1024", "--ulimit", "fsize=268435456:268435456", "--log-driver", "none"}
+	if runtime := os.Getenv("TOOLDECK_CONTAINER_RUNTIME"); runtime != "" {
+		limits = append(limits, "--runtime", runtime)
+	}
 	if os.Getenv("TOOLDECK_SANDBOX_PROFILE") == "synology" {
 		filtered := []string{args[0]}
 		for i := 1; i < len(args); i++ {

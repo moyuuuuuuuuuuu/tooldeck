@@ -41,27 +41,11 @@ func (s *Server) worker(ctx context.Context) {
 			return
 		case <-time.After(time.Second):
 		}
-		s.store.Lock()
-		var next *Run
-		for _, r := range s.store.State.Runs {
-			if r.Status == "queued" && (next == nil || r.Created.Before(next.Created)) {
-				copy := r
-				next = &copy
-			}
-		}
-		if next != nil {
-			now := time.Now()
-			next.Started = &now
-			next.Status = "running"
-			s.store.State.Runs[next.ID] = *next
-			if e := s.store.save(); e != nil {
-				s.store.Unlock()
-				continue
-			}
-		}
-		s.store.Unlock()
-		if next != nil {
+		if next := s.claimRun(); next != nil {
 			s.execute(ctx, *next)
+			s.store.Lock()
+			delete(s.activeRuns, next.ID)
+			s.store.Unlock()
 		}
 	}
 }
@@ -103,6 +87,9 @@ func (s *Server) execute(parent context.Context, r Run) {
 		r.CancelError = currentRun.CancelError
 		r.Events = currentRun.Events
 		s.store.State.Runs[r.ID] = r
+		if terminalRun(r.Status) && m.Execution.Mode == "async" {
+			s.store.notice(r.Owner, "run", r.ID, "异步运行已结束："+r.Status)
+		}
 		if e := s.store.save(); e != nil {
 			fmt.Fprintln(os.Stderr, e)
 		}
@@ -191,7 +178,7 @@ func (s *Server) execute(parent context.Context, r Run) {
 		runtimeImage = tool.BuildImage
 	}
 	name := "tooldeck-run-" + r.ID
-	args := []string{"run", "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", fmt.Sprintf("%dm", m.Execution.Memory), "--memory-swap", fmt.Sprintf("%dm", m.Execution.Memory), "--cpus", "1", "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=268435456", "--mount", "type=bind,src=" + packagePath + ",dst=/tool,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", r.ID) + ",dst=/job,readonly", "--tmpfs", "/job/output:rw,nosuid,nodev,noexec,size=67108864,mode=1777", "--workdir", "/tool", "-i"}
+	args := []string{"run", "--label", "tooldeck.instance=" + s.store.State.InstanceID, "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", fmt.Sprintf("%dm", m.Execution.Memory), "--memory-swap", fmt.Sprintf("%dm", m.Execution.Memory), "--cpus", "1", "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=268435456", "--mount", "type=bind,src=" + packagePath + ",dst=/tool,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", r.ID) + ",dst=/job,readonly", "--tmpfs", "/job/output:rw,nosuid,nodev,noexec,size=67108864,mode=1777", "--workdir", "/tool", "-i"}
 	if runtime != "go" || tool.Artifact != "" {
 		for i := range args {
 			if strings.HasPrefix(args[i], "/tmp:rw,") {
@@ -441,6 +428,14 @@ func (s *Server) collectArtifacts(ctx context.Context, job string, r Run) ([]Fil
 		}
 		id := ID("file_")
 		f := File{ID: id, Name: d.Name(), Size: info.Size(), RunID: r.ID, MIME: detectMIME(p), ExpiresAt: time.Now().Add(7 * 24 * time.Hour), DownloadsRemaining: 3}
+		s.store.Lock()
+		family := toolFamily(s.store.State.Tools[r.ToolID])
+		s.store.Unlock()
+		release, quotaErr := s.reserveStorage(r.Owner, family, f.Size)
+		if quotaErr != nil {
+			return quotaErr
+		}
+		defer release()
 		if e = s.persistFile(ctx, &f, p); e != nil {
 			return errors.New("artifact upload to object storage failed")
 		}

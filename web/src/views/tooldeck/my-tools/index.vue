@@ -26,6 +26,14 @@
           ><div class="description">{{ row.manifest.description }}</div></template
         ></ElTableColumn
       >
+      <ElTableColumn label="对外版本" width="140"
+        ><template #default="{ row }"
+          ><ElTag v-if="row.default_version" type="success">默认版本</ElTag
+          ><ElTag v-else-if="row.canary_percent" type="warning"
+            >灰度 {{ row.canary_percent }}%</ElTag
+          ><span v-else>—</span></template
+        ></ElTableColumn
+      >
       <ElTableColumn label="可见范围" width="100"
         ><template #default="{ row }"
           ><ElTag type="info" effect="plain">{{
@@ -56,13 +64,14 @@
           buildLabels[row.build_status || ''] || row.build_status
         }}</template></ElTableColumn
       >
-      <ElTableColumn label="操作" min-width="340"
+      <ElTableColumn label="操作" min-width="410"
         ><template #default="{ row }"
           ><ElButton
             link
             type="primary"
             @click="router.push('/tooldeck/run/' + encodeURIComponent(row.id))"
             >详情</ElButton
+          ><ElButton link type="primary" @click="openRelease(row as Tool)">版本发布</ElButton
           ><ElButton
             v-if="['queued', 'building'].includes(row.build_status || '')"
             link
@@ -107,6 +116,13 @@
         ></ElTableColumn
       >
     </ElTable>
+    <VersionRelease
+      v-if="releaseTool"
+      v-model="releaseVisible"
+      :tool="releaseTool"
+      :tools="tools"
+      @updated="load"
+    />
     <ElDialog
       v-model="logOpen"
       :title="`${logTool?.manifest.title || '工具'} · 构建日志`"
@@ -121,6 +137,13 @@
   </section>
 </template>
 <script setup lang="ts">
+  import VersionRelease from '../components/VersionRelease.vue'
+  function openRelease(tool: Tool) {
+    releaseTool.value = tool
+    releaseVisible.value = true
+  }
+  const releaseVisible = ref(false),
+    releaseTool = ref<Tool | null>(null)
   import { computed, onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { ElMessage, ElMessageBox } from 'element-plus'

@@ -142,6 +142,17 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	logs := &cappedBuffer{Limit: 1 << 20}
 	liveLogs := &buildLogWriter{server: s, toolID: t.ID, buffer: logs, interval: 2 * time.Second}
 	defer func() {
+		var artifactSize int64
+		if buildErr == nil {
+			artifactSize, buildErr = treeSize(dest)
+			if buildErr == nil {
+				var release func()
+				release, buildErr = s.reserveStorage(toolOwner(t), toolFamily(t), artifactSize)
+				if release != nil {
+					defer release()
+				}
+			}
+		}
 		_ = os.RemoveAll(job)
 		s.store.Lock()
 		defer s.store.Unlock()
@@ -154,10 +165,12 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		} else {
 			current.BuildStatus = "ready"
 			current.BuildError = ""
+			current.ArtifactBytes = artifactSize
 			current.Artifact = artifact
 			current.BuildImage = image
 		}
 		s.store.State.Tools[t.ID] = current
+		s.store.notice(toolOwner(current), "build", t.ID, "工具构建已结束："+current.BuildStatus)
 		if e := s.store.save(); e != nil {
 			fmt.Fprintln(os.Stderr, "build save failed:", e)
 		}
@@ -172,7 +185,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	case "golang":
 		runtime = "go"
 	}
-	buildRevision := "build5"
+	buildRevision := "build5-" + s.store.State.InstanceID
 	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-"+buildRevision, "--format", "{{.Id}}").Output()
 	if e != nil {
 		version, versionErr := runtimeVersion(t.Manifest)
@@ -198,7 +211,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		liveLogs.Write([]byte("首次使用该版本，正在准备运行环境...\n"))
 		prepareCtx, prepareCancel := context.WithTimeout(parent, 20*time.Minute)
 		tag := "tooldeck-runtime-" + runtime + ":" + version + "-" + buildRevision
-		prepare := exec.CommandContext(prepareCtx, "docker", "build", "--progress=plain", "--build-arg", "BASE_IMAGE="+base, "-t", tag, "-f", "/runtime-context/runtimes/"+runtime+".Dockerfile", "/runtime-context")
+		prepare := exec.CommandContext(prepareCtx, "docker", "build", "--label", "tooldeck.instance="+s.store.State.InstanceID, "--progress=plain", "--build-arg", "BASE_IMAGE="+base, "-t", tag, "-f", "/runtime-context/runtimes/"+runtime+".Dockerfile", "/runtime-context")
 		prepare.Stdout = liveLogs
 		prepare.Stderr = liveLogs
 		prepareErr := prepare.Run()
@@ -231,7 +244,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	go proxy.Serve(listener)
 	defer proxy.Close()
 	name := "tooldeck-build-" + artifact
-	args := []string{"run", "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "256", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--tmpfs", "/build:rw,exec,nosuid,nodev,size=536870912,mode=1777", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=268435456,mode=1777", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "packages", t.ID) + ",dst=/source,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", artifact) + ",dst=/job,readonly", "--env", "HOME=/tmp", "--env", "GOCACHE=/tmp/go-cache", "--env", "GOMODCACHE=/tmp/go-mod", "--entrypoint", "/build.sh", image, t.Manifest.Entrypoint, t.Manifest.BuildCommand}
+	args := []string{"run", "--label", "tooldeck.instance=" + s.store.State.InstanceID, "--name", name, "--network", "none", "--read-only", "--user", "65534:65534", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "256", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--tmpfs", "/build:rw,exec,nosuid,nodev,size=536870912,mode=1777", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=268435456,mode=1777", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "packages", t.ID) + ",dst=/source,readonly", "--mount", "type=bind,src=" + filepath.Join(s.hostData, "jobs", artifact) + ",dst=/job,readonly", "--env", "HOME=/tmp", "--env", "GOCACHE=/tmp/go-cache", "--env", "GOMODCACHE=/tmp/go-mod", "--entrypoint", "/build.sh", image, t.Manifest.Entrypoint, t.Manifest.BuildCommand}
 	args = sandboxArgs(args)
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	cmd.Stderr = liveLogs

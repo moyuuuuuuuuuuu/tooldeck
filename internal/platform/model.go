@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -52,11 +53,12 @@ type Manifest struct {
 	Runtime        string     `json:"runtime"`
 	Entrypoint     string     `json:"entrypoint"`
 	Execution      struct {
-		Stream     bool   `json:"stream,omitempty"`
-		CancelHook bool   `json:"cancel_hook,omitempty"`
-		Mode       string `json:"mode"`
-		Timeout    int    `json:"timeout_seconds"`
-		Memory     int    `json:"memory_mb"`
+		Concurrency int    `json:"max_concurrency,omitempty"`
+		Stream      bool   `json:"stream,omitempty"`
+		CancelHook  bool   `json:"cancel_hook,omitempty"`
+		Mode        string `json:"mode"`
+		Timeout     int    `json:"timeout_seconds"`
+		Memory      int    `json:"memory_mb"`
 	} `json:"execution"`
 	Network struct {
 		Enabled      bool     `json:"enabled"`
@@ -70,22 +72,26 @@ type Manifest struct {
 	} `json:"output_schema"`
 }
 type Tool struct {
-	Withdrawn    bool        `json:"withdrawn,omitempty"`
-	Playground   bool        `json:"playground,omitempty"`
-	BuildStatus  string      `json:"build_status,omitempty"`
-	BuildLog     string      `json:"build_log,omitempty"`
-	BuildError   string      `json:"build_error,omitempty"`
-	BuildImage   string      `json:"build_image,omitempty"`
-	Artifact     string      `json:"artifact,omitempty"`
-	Public       *bool       `json:"public,omitempty"`
-	ReviewStatus string      `json:"review_status,omitempty"`
-	ReviewNote   string      `json:"review_note,omitempty"`
-	Owner        string      `json:"owner,omitempty"`
-	Author       *ToolAuthor `json:"author,omitempty"`
-	APIEnabled   *bool       `json:"api_enabled,omitempty"`
-	ID           string      `json:"id"`
-	Manifest     Manifest    `json:"manifest"`
-	Created      time.Time   `json:"created_at"`
+	StoredBytes    int64       `json:"stored_bytes,omitempty"`
+	ArtifactBytes  int64       `json:"artifact_bytes,omitempty"`
+	DefaultVersion bool        `json:"default_version,omitempty"`
+	CanaryPercent  int         `json:"canary_percent,omitempty"`
+	Withdrawn      bool        `json:"withdrawn,omitempty"`
+	Playground     bool        `json:"playground,omitempty"`
+	BuildStatus    string      `json:"build_status,omitempty"`
+	BuildLog       string      `json:"build_log,omitempty"`
+	BuildError     string      `json:"build_error,omitempty"`
+	BuildImage     string      `json:"build_image,omitempty"`
+	Artifact       string      `json:"artifact,omitempty"`
+	Public         *bool       `json:"public,omitempty"`
+	ReviewStatus   string      `json:"review_status,omitempty"`
+	ReviewNote     string      `json:"review_note,omitempty"`
+	Owner          string      `json:"owner,omitempty"`
+	Author         *ToolAuthor `json:"author,omitempty"`
+	APIEnabled     *bool       `json:"api_enabled,omitempty"`
+	ID             string      `json:"id"`
+	Manifest       Manifest    `json:"manifest"`
+	Created        time.Time   `json:"created_at"`
 }
 type ToolAuthor struct {
 	ID            string    `json:"id"`
@@ -157,26 +163,33 @@ type Secret struct {
 	Tools  []string `json:"tools"`
 }
 type State struct {
-	Donation        DonationSettings             `json:"donation"`
-	AccountEnv      map[string]map[string]string `json:"account_env,omitempty"`
-	ToolEnv         map[string]map[string]string `json:"tool_env,omitempty"`
-	ReviewRequired  *bool                        `json:"review_required,omitempty"`
-	EmailCodes      map[string]EmailCode         `json:"email_codes"`
-	Users           map[string]User              `json:"users"`
-	Tools           map[string]Tool              `json:"tools"`
-	Runs            map[string]Run               `json:"runs"`
-	RunEnv          map[string]map[string]string `json:"run_env,omitempty"`
-	CallbackSecrets map[string]string            `json:"callback_secrets,omitempty"`
-	Files           map[string]File              `json:"files"`
-	Owners          map[string]string            `json:"owners"`
-	Keys            map[string]Credential        `json:"keys"`
-	Secrets         map[string]Secret            `json:"secrets"`
-	Idempotency     map[string]string            `json:"idempotency"`
+	InstanceID        string                       `json:"instance_id"`
+	StorageQuotas     StorageQuotas                `json:"storage_quotas"`
+	Notices           map[string]Notice            `json:"notices,omitempty"`
+	NoticePreferences map[string]NoticePreferences `json:"notice_preferences,omitempty"`
+	Releases          map[string]Release           `json:"releases,omitempty"`
+	Audit             map[string]AuditEvent        `json:"audit,omitempty"`
+	Donation          DonationSettings             `json:"donation"`
+	AccountEnv        map[string]map[string]string `json:"account_env,omitempty"`
+	ToolEnv           map[string]map[string]string `json:"tool_env,omitempty"`
+	ReviewRequired    *bool                        `json:"review_required,omitempty"`
+	EmailCodes        map[string]EmailCode         `json:"email_codes"`
+	Users             map[string]User              `json:"users"`
+	Tools             map[string]Tool              `json:"tools"`
+	Runs              map[string]Run               `json:"runs"`
+	RunEnv            map[string]map[string]string `json:"run_env,omitempty"`
+	CallbackSecrets   map[string]string            `json:"callback_secrets,omitempty"`
+	Files             map[string]File              `json:"files"`
+	Owners            map[string]string            `json:"owners"`
+	Keys              map[string]Credential        `json:"keys"`
+	Secrets           map[string]Secret            `json:"secrets"`
+	Idempotency       map[string]string            `json:"idempotency"`
 }
 type Store struct {
 	sync.Mutex
-	Root  string
-	State State
+	Root    string
+	backend StateBackend
+	State   State
 }
 
 func OpenStore(root string) (*Store, error) {
@@ -188,12 +201,53 @@ func OpenStore(root string) (*Store, error) {
 		return nil, err
 	}
 	s := &Store{Root: root, State: State{Tools: map[string]Tool{}, Runs: map[string]Run{}, RunEnv: map[string]map[string]string{}, CallbackSecrets: map[string]string{}, Files: map[string]File{}, Owners: map[string]string{}, Keys: map[string]Credential{}, Secrets: map[string]Secret{}, Idempotency: map[string]string{}, Users: map[string]User{}}}
-	b, err := os.ReadFile(filepath.Join(root, "state.json"))
-	if err == nil {
-		err = json.Unmarshal(b, &s.State)
+	backend, err := openSQLite(root)
+	if err != nil {
+		return nil, err
+	}
+	s.backend = backend
+	raw, err := backend.Load()
+	if os.IsNotExist(err) {
+		raw, err = os.ReadFile(filepath.Join(root, "state.json"))
+		if err == nil {
+			if !json.Valid(raw) {
+				backend.Close()
+				return nil, errors.New("invalid legacy state.json")
+			}
+			if err = backupLegacy(root, raw); err != nil {
+				backend.Close()
+				return nil, err
+			}
+		}
 	}
 	if err != nil && !os.IsNotExist(err) {
+		backend.Close()
 		return nil, err
+	}
+	if len(raw) > 0 {
+		if err = json.Unmarshal(raw, &s.State); err != nil {
+			backend.Close()
+			return nil, err
+		}
+	}
+	fields := reflect.ValueOf(&s.State).Elem()
+	for i := 0; i < fields.NumField(); i++ {
+		f := fields.Field(i)
+		if f.Kind() == reflect.Map && f.IsNil() {
+			f.Set(reflect.MakeMap(f.Type()))
+		}
+	}
+	if s.State.InstanceID == "" {
+		s.State.InstanceID = ID("instance_")
+	}
+	if s.State.Notices == nil {
+		s.State.Notices = map[string]Notice{}
+	}
+	if s.State.NoticePreferences == nil {
+		s.State.NoticePreferences = map[string]NoticePreferences{}
+	}
+	if s.State.Audit == nil {
+		s.State.Audit = map[string]AuditEvent{}
 	}
 	if s.State.RunEnv == nil {
 		s.State.RunEnv = map[string]map[string]string{}
@@ -202,6 +256,13 @@ func OpenStore(root string) (*Store, error) {
 		s.State.CallbackSecrets = map[string]string{}
 	}
 	for id, t := range s.State.Tools {
+		if t.StoredBytes == 0 {
+			t.StoredBytes, _ = treeSize(filepath.Join(root, "packages", t.ID))
+		}
+		if t.Artifact != "" && t.ArtifactBytes == 0 {
+			t.ArtifactBytes, _ = treeSize(filepath.Join(root, "artifacts", t.Artifact))
+		}
+		s.State.Tools[id] = t
 		if t.BuildStatus == "building" {
 			t.BuildStatus = "failed"
 			t.BuildError = "构建被服务重启中断，请重试"
@@ -224,31 +285,14 @@ func OpenStore(root string) (*Store, error) {
 			s.State.Runs[id] = r
 		}
 	}
-	return s, s.save()
+	if err := s.save(); err != nil {
+		s.Close()
+		return nil, err
+	}
+	return s, nil
 }
-func (s *Store) save() error {
-	b, e := json.Marshal(s.State)
-	if e != nil {
-		return e
-	}
-	p := filepath.Join(s.Root, "state.json.tmp")
-	f, e := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if e != nil {
-		return e
-	}
-	_, e = f.Write(b)
-	if e == nil {
-		e = f.Sync()
-	}
-	ce := f.Close()
-	if e == nil {
-		e = ce
-	}
-	if e != nil {
-		return e
-	}
-	return os.Rename(p, filepath.Join(s.Root, "state.json"))
-}
+func (s *Store) save() error  { s.seedReleases(); return s.backend.Save(s.State) }
+func (s *Store) Close() error { return s.backend.Close() }
 func ID(prefix string) string {
 	b := make([]byte, 16)
 	if _, e := rand.Read(b); e != nil {
@@ -263,6 +307,9 @@ func validPath(p string) bool {
 	return p != "" && !strings.Contains(p, "\\") && !strings.Contains(p, ":") && !strings.HasPrefix(p, "/") && filepath.Clean(p) == p && p != ".." && !strings.HasPrefix(p, "../")
 }
 func (m *Manifest) Validate() error {
+	if m.Execution.Concurrency < 0 || m.Execution.Concurrency > 64 {
+		return errors.New("max_concurrency must be 0..64")
+	}
 	output, err := outputType(m.Output.Type)
 	if err != nil {
 		return err

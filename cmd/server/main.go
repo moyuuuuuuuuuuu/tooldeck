@@ -22,20 +22,27 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	defer func() { cancel(); s.Wait(); s.Close() }()
 	s.Start(ctx)
 	addr := os.Getenv("TOOLDECK_ADDR")
 	if addr == "" {
 		addr = ":8080"
 	}
 	srv := &http.Server{Addr: addr, Handler: s.Handler(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
-		c, cc := context.WithTimeout(context.Background(), 15*time.Second)
+		c, cc := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cc()
-		srv.Shutdown(c)
+		if err := srv.Shutdown(c); err != nil {
+			_ = srv.Close()
+		}
 	}()
 	log.Printf("ToolDeck listening on %s", addr)
 	if e = srv.ListenAndServe(); e != http.ErrServerClosed {
-		log.Fatal(e)
+		log.Print(e)
 	}
+	cancel()
+	<-shutdownDone
 }

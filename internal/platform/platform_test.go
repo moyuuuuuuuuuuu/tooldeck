@@ -32,6 +32,7 @@ func testServer(t *testing.T) *Server {
 	if e != nil {
 		t.Fatal(e)
 	}
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 func TestArchiveRejectsUnsafeEntries(t *testing.T) {

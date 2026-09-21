@@ -32,7 +32,14 @@ func TestRunEnvironmentOverrideIsEncryptedAndScoped(t *testing.T) {
 	if runID == "" || s.store.State.RunEnv[runID]["API_KEY"] == "one-time-secret" {
 		t.Fatal("run environment was not encrypted")
 	}
-	data, _ := os.ReadFile(filepath.Join(s.store.Root, "state.json"))
+	snapshot := filepath.Join(t.TempDir(), "snapshot.json")
+	if err := ExportState(s.store.Root, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if strings.Contains(string(data), "one-time-secret") || strings.Contains(w.Body.String(), "one-time-secret") {
 		t.Fatal("run environment leaked")
 	}

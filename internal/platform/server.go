@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gofrs/flock"
 	"io"
 	"net/http"
 	"net/url"
@@ -19,6 +20,14 @@ import (
 )
 
 type Server struct {
+	reservations                 map[string]storageReservation
+	noticeSender                 func(string, string, string) error
+	stateLock                    *flock.Flock
+	queue                        queueConfig
+	startOnce                    sync.Once
+	workers                      sync.WaitGroup
+	activeRuns                   map[string]Run
+	limitHits                    map[string]uint64
 	mailSender                   func(string, string) error
 	callbackSender               func(string, string, callbackPayload) error
 	bos                          *BOSStore
@@ -34,14 +43,40 @@ func New(root, password string) (*Server, error) {
 	if len(password) < 12 {
 		return nil, errors.New("TOOLDECK_ADMIN_PASSWORD must contain at least 12 characters")
 	}
+	qc, e := loadQueueConfig()
+	if e != nil {
+		return nil, e
+	}
+	if e := os.MkdirAll(root, 0700); e != nil {
+		return nil, e
+	}
+	lock := flock.New(filepath.Join(root, "controller.lock"))
+	locked, e := lock.TryLock()
+	if e != nil {
+		return nil, e
+	}
+	if !locked {
+		return nil, errors.New("another controller is using this data directory")
+	}
+	success := false
+	defer func() {
+		if !success {
+			_ = lock.Unlock()
+		}
+	}()
 	st, e := OpenStore(root)
 	if e != nil {
 		return nil, e
 	}
+	defer func() {
+		if !success {
+			_ = st.Close()
+		}
+	}()
 	if e = bootstrapUser(st, password); e != nil {
 		return nil, e
 	}
-	s := &Server{store: st, password: password, hostData: os.Getenv("TOOLDECK_HOST_DATA"), oauthURL: os.Getenv("TOOLDECK_OAUTH_INTROSPECTION_URL"), cancels: map[string]context.CancelFunc{}, attempts: map[string][]time.Time{}}
+	s := &Server{reservations: map[string]storageReservation{}, stateLock: lock, queue: qc, activeRuns: map[string]Run{}, limitHits: map[string]uint64{}, store: st, password: password, hostData: os.Getenv("TOOLDECK_HOST_DATA"), oauthURL: os.Getenv("TOOLDECK_OAUTH_INTROSPECTION_URL"), cancels: map[string]context.CancelFunc{}, attempts: map[string][]time.Time{}}
 	if os.Getenv("TOOLDECK_STORAGE") == "bos" {
 		s.bos, e = newBOSStore()
 		if e != nil {
@@ -76,13 +111,47 @@ func New(root, password string) (*Server, error) {
 		}
 		s.hostData = strings.TrimSpace(string(b))
 	}
+	success = true
 	return s, nil
 }
 func (s *Server) Start(ctx context.Context) {
-	go s.worker(ctx)
-	go s.callbackWorker(ctx)
-	go s.buildWorker(ctx)
-	go s.artifactCleanupWorker(ctx)
+	s.startOnce.Do(func() {
+		start := func(f func(context.Context)) { s.workers.Add(1); go func() { defer s.workers.Done(); f(ctx) }() }
+		start(func(ctx context.Context) {
+			for {
+				if err := s.reconcileContainers(ctx); err == nil {
+					break
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(5 * time.Second):
+				}
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			for i := 0; i < s.queue.Workers; i++ {
+				start(s.worker)
+			}
+			for i := 0; i < s.queue.Builds; i++ {
+				start(s.buildWorker)
+			}
+		})
+		start(s.callbackWorker)
+		start(s.noticeWorker)
+		start(s.artifactCleanupWorker)
+	})
+}
+func (s *Server) Wait() { s.workers.Wait() }
+func (s *Server) Close() error {
+	err := s.store.Close()
+	if s.stateLock != nil {
+		if e := s.stateLock.Unlock(); err == nil {
+			err = e
+		}
+	}
+	return err
 }
 func jsonResponse(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -109,7 +178,7 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 	return nil
 }
 func (s *Server) Handler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return s.auditMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		if r.URL.Path == "/healthz" {
@@ -157,6 +226,7 @@ func (s *Server) Handler() http.Handler {
 			fail(w, 401, e)
 			return
 		}
+		auditActor(r, p.owner())
 		if strings.HasPrefix(r.URL.Path, "/api/core/") {
 			if !p.Session {
 				fail(w, 403, "user session required")
@@ -168,8 +238,20 @@ func (s *Server) Handler() http.Handler {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
 		parts := strings.Split(path, "/")
 		switch {
+		case path == "inbox" || strings.HasPrefix(path, "inbox/"):
+			s.inboxEndpoint(w, r, p, parts)
+		case path == "docker-resources":
+			s.dockerStorageEndpoint(w, r, p)
+		case path == "storage" || strings.HasPrefix(path, "storage/"):
+			s.storageEndpoint(w, r, p, parts)
+		case path == "audit":
+			s.auditEndpoint(w, r, p)
+		case path == "metrics":
+			s.metricsEndpoint(w, r, p)
 		case path == "donation-settings":
 			s.donationEndpoint(w, r, p, false)
+		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "release":
+			s.releaseEndpoint(w, r, p, parts[1])
 		case path == "my-tools":
 			s.myTools(w, r, p)
 		case len(parts) == 2 && parts[0] == "tools" && r.Method == "DELETE":
@@ -199,7 +281,7 @@ func (s *Server) Handler() http.Handler {
 				}
 			}
 			s.store.Unlock()
-			list := catalogTools(available)
+			list := s.releasedCatalog(p, available)
 			for i := range list {
 				if !p.Admin && toolOwner(list[i]) != p.owner() {
 					list[i].BuildLog = ""
@@ -273,11 +355,11 @@ func (s *Server) Handler() http.Handler {
 			ctx, c := context.WithTimeout(r.Context(), 3*time.Second)
 			defer c()
 			e := exec.CommandContext(ctx, "docker", "info", "--format", "{{.ServerVersion}}").Run()
-			jsonResponse(w, 200, []any{map[string]any{"name": "local-worker", "online": e == nil, "concurrency": 1, "runtimes": []string{"php", "js", "node", "python", "go"}}})
+			jsonResponse(w, 200, []any{map[string]any{"name": "local-worker", "online": e == nil, "concurrency": s.queue.Workers, "build_concurrency": s.queue.Builds, "user_concurrency": s.queue.PerUser, "queue": s.queueMetrics(), "runtimes": []string{"php", "js", "node", "python", "go"}}})
 		default:
 			fail(w, 404, "not found")
 		}
-	})
+	}))
 }
 
 func pageBounds(total, page, pageSize int) (int, int) {
@@ -334,6 +416,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 401, "用户名或密码错误")
 		return
 	}
+	auditActor(r, user.ID)
 	token := ID("td_session_")
 	k := Credential{ID: ID("session_"), UserID: user.ID, Name: user.Username, Hash: hash(token), Expires: time.Now().Add(12 * time.Hour), Session: true}
 	s.store.Lock()
@@ -379,7 +462,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("donation", "Donation", "支持 ToolDeck", "ri:heart-line")}
 		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
-			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))
+			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "运行与治理", "ri:server-line"))
 		}
 		jsonResponse(w, 200, children)
 	default:
@@ -494,6 +577,17 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		fail(w, 422, e)
 		return
 	}
+	size, e := treeSize(dest)
+	if e != nil {
+		fail(w, 500, e)
+		return
+	}
+	release, e := s.reserveStorage(p.owner(), p.owner()+":"+m.Name, size)
+	if e != nil {
+		fail(w, 507, e)
+		return
+	}
+	defer release()
 	s.store.Lock()
 	defer s.store.Unlock()
 	for _, t := range s.store.State.Tools {
@@ -513,7 +607,7 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		return
 	}
 	m.RuntimeVersion, _ = runtimeVersion(m)
-	tool := Tool{BuildStatus: "pending", Public: &public, ReviewStatus: "draft", ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled}
+	tool := Tool{StoredBytes: size, BuildStatus: "pending", Public: &public, ReviewStatus: "draft", ID: id, Manifest: m, Created: time.Now(), Owner: p.owner(), APIEnabled: &apiEnabled}
 	s.store.State.Tools[id] = tool
 	if e = s.store.save(); e != nil {
 		delete(s.store.State.Tools, id)
@@ -809,6 +903,9 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 		if run.Status == "queued" {
 			run.Status = "canceled"
 			s.store.State.Runs[run.ID] = run
+			if s.store.State.Tools[run.ToolID].Manifest.Execution.Mode == "async" {
+				s.store.notice(run.Owner, "run", run.ID, "异步运行已取消")
+			}
 			_ = s.store.save()
 			s.store.Unlock()
 			jsonResponse(w, 200, run)
@@ -831,6 +928,9 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 			run.Status = "canceled"
 			s.store.Lock()
 			s.store.State.Runs[run.ID] = run
+			if s.store.State.Tools[run.ToolID].Manifest.Execution.Mode == "async" {
+				s.store.notice(run.Owner, "run", run.ID, "异步运行已取消")
+			}
 			_ = s.store.save()
 			s.store.Unlock()
 			jsonResponse(w, 200, run)
@@ -851,6 +951,9 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 		current.Status = run.Status
 		current.CancelError = run.CancelError
 		s.store.State.Runs[run.ID] = current
+		if tool.Manifest.Execution.Mode == "async" {
+			s.store.notice(run.Owner, "run", run.ID, "异步运行已结束："+current.Status)
+		}
 		_ = s.store.save()
 		run = current
 		s.store.Unlock()
@@ -898,6 +1001,13 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request, p Principal)
 		fail(w, 413, "file too large")
 		return
 	}
+	release, e := s.reserveStorage(p.owner(), "", n)
+	if e != nil {
+		os.Remove(path)
+		fail(w, 507, e)
+		return
+	}
+	defer release()
 	file := File{ID: id, Name: filepath.Base(h.Filename), Size: n, MIME: detectMIME(path)}
 	if e = s.persistFile(r.Context(), &file, path); e != nil {
 		os.Remove(path)

@@ -11,11 +11,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
-RUN CGO_ENABLED=0 go build -trimpath -o /tooldeck ./cmd/server
+RUN CGO_ENABLED=0 go build -trimpath -o /tooldeck ./cmd/server && CGO_ENABLED=0 go build -trimpath -o /tooldeck-state-export ./cmd/state-export
 
 FROM docker:28-cli
 RUN apk add --no-cache ca-certificates
 COPY --from=go /tooldeck /usr/local/bin/tooldeck
+COPY --from=go /tooldeck-state-export /usr/local/bin/tooldeck-state-export
 COPY --from=web /src/dist /web
 COPY runtimes/ /runtime-context/runtimes/
 ENV TOOLDECK_DATA_DIR=/data TOOLDECK_WEB_DIR=/web

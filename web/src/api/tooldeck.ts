@@ -7,6 +7,7 @@ export interface Field {
   minLength?: number; maxLength?: number; minItems?: number; maxItems?: number
 }
 export interface Tool {
+ default_version?:boolean;canary_percent?:number;
  build_status?:string;build_log?:string;build_error?:string;
  withdrawn?:boolean; created_at?:string; public?:boolean; review_status?:string;review_note?:string;api_enabled?: boolean; owner?:string
  author?:{id:string;username:string;nickname:string;email:string;email_verified:boolean;bio:string;created_at:string}
@@ -21,6 +22,7 @@ export interface Run { output_type?: string; run_id: string; tool_id: string; st
 export interface RunPage { items: Run[]; total: number; page: number; page_size: number }
 export const toolApiPrefix = () => useUserStore().isLogin ? '/v1' : '/public'
 export const td = {
+ get: <T>(kind: string) => request.get<T>({url: `/v1/${kind}`}),
   tools: () => request.get<Tool[]>({url: `${toolApiPrefix()}/tools`}),
   runs: (page = 1, pageSize = 20) => request.get<RunPage>({url: `/v1/runs?mine=1&page=${page}&page_size=${pageSize}`}),
   run: (id: string) => request.get<Run>({url: `${toolApiPrefix()}/runs/${id}`}),

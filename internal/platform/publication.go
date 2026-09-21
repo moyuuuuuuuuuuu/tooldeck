@@ -21,6 +21,11 @@ func (s *Server) myTools(w http.ResponseWriter, r *http.Request, p Principal) {
 	list := []Tool{}
 	for _, t := range s.store.State.Tools {
 		if !t.Playground && toolOwner(t) == p.owner() {
+			rel := s.store.State.Releases[toolFamily(t)]
+			t.DefaultVersion = rel.Default == t.ID
+			if rel.Canary == t.ID {
+				t.CanaryPercent = rel.Percent
+			}
 			list = append(list, t)
 		}
 	}

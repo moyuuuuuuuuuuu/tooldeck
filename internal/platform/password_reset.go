@@ -48,6 +48,7 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 		fail(w, 422, "验证码错误")
 		return
 	}
+	auditActor(r, u.ID)
 	oldUser := u
 	u.PasswordHash = passwordHash(b.Password)
 	s.store.State.Users[u.ID] = u

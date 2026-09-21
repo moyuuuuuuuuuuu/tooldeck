@@ -64,7 +64,7 @@ func (s *Server) guestEndpoint(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		s.store.Unlock()
-		list := catalogTools(available)
+		list := s.releasedCatalog(p, available)
 		jsonResponse(w, 200, list)
 	case len(parts) == 3 && parts[0] == "tools" && parts[2] == "runs" && r.Method == "POST":
 		s.createRun(w, r, p, parts[1])
