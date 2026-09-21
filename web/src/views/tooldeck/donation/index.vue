@@ -223,6 +223,8 @@
     margin: 16px 0 8px;
   }
   .qr-code {
+    display: block;
+    margin-inline: auto;
     width: 100%;
     max-width: 260px;
     height: 280px;
