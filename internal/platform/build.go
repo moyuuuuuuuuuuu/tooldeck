@@ -172,7 +172,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	case "golang":
 		runtime = "go"
 	}
-	buildRevision := "build3"
+	buildRevision := "build4"
 	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-"+buildRevision, "--format", "{{.Id}}").Output()
 	if e != nil {
 		version, versionErr := runtimeVersion(t.Manifest)

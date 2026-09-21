@@ -10,6 +10,6 @@ for runtime in php node python go; do
    python) base="python:$version-slim-bookworm";;
    go) base="golang:$version-bookworm";;
   esac
-  docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-$runtime:$version-build3" -f "runtimes/$runtime.Dockerfile" .
+  docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-$runtime:$version-build4" -f "runtimes/$runtime.Dockerfile" .
  done
 done
