@@ -11,12 +11,6 @@
             ><p>{{ tool.manifest.description }}</p></div
           ><div class="management-actions"
             ><ElButton
-              v-if="owner && tool.build_status"
-              type="primary"
-              plain
-              @click="openDetail('build')"
-              >构建日志</ElButton
-            ><ElButton
               v-if="user.isLogin && tool.manifest.env?.length"
               type="warning"
               plain
@@ -87,8 +81,6 @@
         modal-class="tool-detail-overlay"
         destroy-on-close
         ><ElTabs v-model="detailTab"
-          ><ElTabPane v-if="owner && tool.build_status" label="构建日志" name="build"
-            ><ToolBuild :tool-id="tool.id" @updated="tool = $event" /></ElTabPane
           ><ElTabPane
             v-if="user.isLogin && tool.manifest.env?.length"
             label="运行环境变量"
@@ -161,7 +153,6 @@
   import { td, type Field, type Run, type Tool } from '@/api/tooldeck'
   import DynamicField from '../components/DynamicField.vue'
   import RunResult from '../components/RunResult.vue'
-  import ToolBuild from '../components/ToolBuild.vue'
   import ToolEnvironment from '../components/ToolEnvironment.vue'
   defineOptions({ name: 'ToolRun' })
   const route = useRoute(),
@@ -230,7 +221,7 @@
     if (timer) clearTimeout(timer)
     timer = undefined
   }
-  function openDetail(tab: 'build' | 'env' | 'api') {
+  function openDetail(tab: 'env' | 'api') {
     detailTab.value = tab
     detailOpen.value = true
   }
