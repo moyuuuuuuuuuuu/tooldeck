@@ -266,9 +266,9 @@ npm run build
 | `web/` | Vue 用户界面 |
 | `runtimes/` | 各语言执行镜像与构建脚本 |
 | `examples/`、`scripts/` | 示例代码包及辅助脚本 |
-| `docs/`、`deploy/` | 规范、架构与部署资料 |
+| `docs/`、`deploy/` | 规范、架构、后续改进清单与部署资料 |
 
-不要提交 `.env`、主密钥、上传代码、运行记录或第三方凭证。补充设计见 [架构说明](docs/architecture.md)。
+不要提交 `.env`、主密钥、上传代码、运行记录或第三方凭证。补充设计见 [架构说明](docs/architecture.md)，已确认的限制与后续计划见 [改进清单](docs/roadmap.md)。
 
 ## 上游与许可
 

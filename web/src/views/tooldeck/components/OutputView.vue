@@ -17,7 +17,7 @@
       <ElTabPane label="页面预览" name="preview"
         ><p class="hint">静态预览：原始 HTML、外部资源和链接跳转已禁用。</p
         ><div class="preview-scroll"
-          ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml" /></div
+          ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml" :theme="siteTheme" /></div
       ></ElTabPane>
       <ElTabPane label="Markdown 源码" name="source">
         <pre>{{ value }}</pre>
@@ -53,6 +53,7 @@
   import { ElMessage } from 'element-plus'
   import { MdPreview } from 'md-editor-v3'
   import 'md-editor-v3/lib/preview.css'
+  import { useSettingStore } from '@/store/modules/setting'
   import {
     csvPreview,
     htmlPreview,
@@ -60,7 +61,9 @@
     outputFormats,
     sanitizeOutputHtml
   } from './outputPresentation'
+  const settingStore = useSettingStore()
   const props = defineProps<{ value: unknown; type?: string }>()
+  const siteTheme = computed(() => (settingStore.isDark ? 'dark' : 'light'))
   const format = computed(() => normalizeOutputType(props.type))
   const label = computed(() => outputFormats.find((item) => item.value === format.value)?.label)
   const requiresText = computed(() =>
@@ -134,6 +137,19 @@
     max-height: 480px;
     overflow: auto;
     border-radius: 8px;
+    background: var(--el-fill-color-light);
+  }
+  .preview-scroll :deep(.md-editor-previewOnly) {
+    --md-bk-color: var(--el-fill-color-light);
+    --md-color: var(--el-text-color-primary);
+  }
+  .preview-scroll :deep(.md-editor-preview) {
+    padding: 20px 24px;
+  }
+  @media (max-width: 600px) {
+    .preview-scroll :deep(.md-editor-preview) {
+      padding: 16px;
+    }
   }
   table {
     border-collapse: collapse;
