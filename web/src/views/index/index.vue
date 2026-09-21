@@ -9,7 +9,8 @@
         ><RouterLink to="/tooldeck/playground">在线调试</RouterLink
         ><RouterLink to="/tooldeck/runs">运行记录</RouterLink
         ><RouterLink to="/tooldeck/credentials">访问凭证</RouterLink
-        ><RouterLink to="/tooldeck/guide">开发文档</RouterLink></nav
+        ><RouterLink to="/tooldeck/guide">开发文档</RouterLink
+        ><RouterLink to="/tooldeck/donation">捐赠支持</RouterLink></nav
       ><ThemeSwitch /><Notifications /><ElDropdown @command="navigate"
         ><button type="button" class="account-button" aria-label="账号菜单"
           ><UserAvatar :size="32" /><span class="account-name">{{
@@ -44,7 +45,10 @@
         ></ElDropdown
       ></header
     ><main class="site-content"><RouterView /></main
-    ><footer>ToolDeck · 让好用的工具，随手可得。</footer></div
+    ><footer
+      >ToolDeck · 让好用的工具，随手可得。
+      <RouterLink to="/tooldeck/donation">捐赠支持</RouterLink></footer
+    ></div
   >
 </template>
 <script setup lang="ts">

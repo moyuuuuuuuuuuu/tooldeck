@@ -65,7 +65,7 @@
         [
           'execution.stream',
           '默认 false',
-          '开启工具 delta 事件转发；网页实时显示，API 可订阅 SSE。'
+          '开启工具 delta 事件转发；开启时 output_schema.type 必须为 stream，反之亦然。'
         ],
         [
           'execution.mode',
@@ -83,8 +83,8 @@
         ['secrets', '默认 []', '平台服务密钥名称列表，仅管理员包可引用；普通工具请使用 env。'],
         [
           'output_schema.type',
-          '建议填写 json',
-          '普通工具必须输出单个合法 JSON；此字段不提供完整输出 JSON Schema 校验。文本输出仅在线运行使用。'
+          '默认 json',
+          '支持 json、text、html、markdown、csv、xml、image-gallery、stream 及对应 MIME 别名。HTML 与 Markdown 只做隔离静态预览。stream 必须同时设置 execution.stream: true。stdout 始终输出单个合法 JSON 值。'
         ]
       ]
     },

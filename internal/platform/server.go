@@ -145,6 +145,10 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/api/public/") {
+			if r.URL.Path == "/api/public/donation" {
+				s.donationEndpoint(w, r, Principal{}, true)
+				return
+			}
 			s.guestEndpoint(w, r)
 			return
 		}
@@ -164,6 +168,8 @@ func (s *Server) Handler() http.Handler {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
 		parts := strings.Split(path, "/")
 		switch {
+		case path == "donation-settings":
+			s.donationEndpoint(w, r, p, false)
 		case path == "my-tools":
 			s.myTools(w, r, p)
 		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "publication":
@@ -359,7 +365,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 	case "/api/core/system/dictAll":
 		jsonResponse(w, 200, map[string]any{})
 	case "/api/core/system/menu":
-		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line")}
+		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("donation", "Donation", "支持 ToolDeck", "ri:heart-line")}
 		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
 			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "执行节点", "ri:server-line"))
@@ -440,6 +446,9 @@ func (s *Server) uploadTool(w http.ResponseWriter, r *http.Request, p Principal)
 		m.Execution.Stream = value == "true"
 	}
 	apiEnabled := true
+	if value := r.FormValue("output_type"); value != "" {
+		m.Output.Type = value
+	}
 	for field, target := range map[string]*bool{"public": &public, "api_enabled": &apiEnabled} {
 		if value := r.FormValue(field); value != "" {
 			if value != "true" && value != "false" {
@@ -663,7 +672,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		} else if strings.HasPrefix(p.ID, "oauth:") {
 			source = "oauth"
 		}
-		run = Run{ID: ID("run_"), ToolID: id, Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
+		run = Run{ID: ID("run_"), ToolID: id, OutputType: runOutputType(t.Manifest), Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
 		encryptedEnv := map[string]string{}
 		for name, value := range b.Env {
 			cipher, e := s.encrypt(value)

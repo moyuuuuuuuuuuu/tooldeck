@@ -10,7 +10,9 @@ ZIP 根目录包含 `tooldeck.json` 与入口文件。示例见 `examples/`。
 
 文件字段使用 `format: "tooldeck-file"`。API 提交文件 ID；Worker 在运行前将其替换为容器内只读文件路径。输出文件写入 `TOOLDECK_OUTPUT_DIR`，平台在程序结束后收集并返回 `artifacts`，不接受程序提供的任意宿主机路径。运行产物默认保留 7 天且每个文件最多下载 3 次，到期或额度用完后从对象存储和运行记录中删除；Web 使用记录显示剩余次数与到期时间，开启异步邮件通知时可发送同样受限的签名下载链接。
 
-`output_schema.type` 可取 `json`、`text`、`image-gallery`。JSON / 文本通过 result 展示，图片及文件通过 artifacts 展示。不执行输出的 HTML 或 JavaScript。
+`output_schema.type` 可取 `json`、`text`、`html`、`markdown`、`csv`、`xml`、`image-gallery`、`stream`，也接受 `application/json`、`text/plain`、`text/html`、`text/markdown`、`text/csv`、`application/xml`、`text/xml`、`text/event-stream` 等别名。未声明的旧工具按 `json` 展示。所有工具的 stdout 仍必须输出且仅输出一个 JSON 值；文本类结果应输出 JSON 字符串。HTML 和 Markdown 只在隔离沙箱中做静态预览，脚本、表单、外部资源和链接跳转均被禁用；CSV 提供受限表格预览；文件继续通过 artifacts 展示。
+
+SSE 是强约束组合：`execution.stream: true` 时 `output_schema.type` 必须为 `stream`（或 `text/event-stream`），声明 `stream` 时也必须开启 `execution.stream`。任一方向不匹配都会拒绝上传。平台仍从 stderr 接收 `TOOLDECK_EVENT` 增量事件，并从 stdout 接收最终 JSON 值。
 
 ## Schema 支持范围
 

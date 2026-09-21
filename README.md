@@ -265,7 +265,7 @@ npm run build
 
 ## SSE 流式输出
 
-工具声明 `execution.stream: true` 后，向 stderr 输出 `TOOLDECK_EVENT {"type":"delta","text":"片段"}`（每条换行并 flush），stdout 仍在结束时输出完整 JSON，文件产物协议不变。参考 `examples/stream-demo` 和站内开发指引。
+工具必须同时声明 `execution.stream: true` 与 `output_schema.type: "stream"`；任一方向不匹配都会拒绝上传。运行时向 stderr 输出 `TOOLDECK_EVENT {"type":"delta","text":"片段"}`（每条换行并 flush），stdout 仍在结束时输出完整 JSON，文件产物协议不变。参考 `examples/stream-demo` 和站内开发指引。
 
 网页实时追加显示内容。API 在执行 POST 请求中携带 `Accept: text/event-stream`，或创建任务后 GET `/api/v1/runs/{run_id}/events`；均要求登录令牌、API Key 或 OAuth。事件包含 run/status/delta/result/error/done/heartbeat，使用 delta 的 id 通过 Last-Event-ID 断线续传。断开订阅不取消任务。每实例最多 32 个 SSE 连接，单任务最多 4096 条事件，单行最多 64 KB，stderr 含事件合计最多 3 MB。
 
@@ -278,5 +278,11 @@ npm run build
 ### 免登录使用
 
 未登录访问首页或 `/tooldeck/tools` 会进入 `/explore` 访客页面。仅公开、审核通过、构建成功、未下架且 `env` 和旧版 `secrets` 都为空的工具可匿名运行。同步、异步、SSE 与文件输入输出均按独立访客 Cookie 隔离，不提供匿名历史列表。上传工具、个人配置及账号功能仍需登录。
+
+## 捐赠支持
+
+访客可从发现工具页的「捐赠支持」进入 `/explore?view=donation`，登录后入口为 `/tooldeck/donation`。管理员打开该页面可配置说明并上传微信、支付宝收款码，各保留一张；点击保存后替换旧图，清除并保存后隐藏对应方式。图片支持 PNG、JPEG、WebP，单张不超过 512 KB。未配置时展示空状态。
+
+收款码随站点状态持久化，不依赖外部图片地址，也不保留历史版本。`GET /api/public/donation` 公开读取，`GET/POST /api/v1/donation-settings` 仅允许管理员会话访问。页面不处理支付或记录订单。
 
 访客仅支持站内网页操作；网页内部请求要求同源浏览器上下文，不作为开放 API 提供。正式 `/api/v1/` 调用仍必须使用 API Key / OAuth，私有工具不向访客开放。访客写操作受全站账户操作频率限制，队列容量限制继续生效。

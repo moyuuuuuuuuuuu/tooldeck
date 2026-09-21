@@ -5,6 +5,7 @@
       ><nav
         ><ElButton text @click="show()">发现工具</ElButton
         ><ElButton text @click="show('guide')">开发文档</ElButton
+        ><ElButton text @click="show('donation')">捐赠支持</ElButton
         ><ElButton text @click="login('/tooldeck/playground')">在线运行</ElButton></nav
       ><div class="header-actions"
         ><ThemeSwitch /><ElButton @click="login(route.fullPath)">登录</ElButton
@@ -13,17 +14,22 @@
     ><main
       ><template v-if="route.query.tool"><Run /></template
       ><template v-else-if="route.query.view === 'guide'"><Guide /></template
+      ><template v-else-if="route.query.view === 'donation'"><Donation /></template
       ><template v-else
         ><p class="notice"
           >公开工具均可浏览；无需环境变量的工具可以直接运行，需要个人配置的工具会在使用时引导登录。</p
         ><Tools /></template></main
-  ></div>
+    ><footer class="public-footer"
+      ><RouterLink to="/explore?view=donation">捐赠支持 ToolDeck</RouterLink></footer
+    ></div
+  >
 </template>
 <script setup lang="ts">
   import { useRoute, useRouter } from 'vue-router'
   import Tools from '../tools/index.vue'
   import Run from '../run/index.vue'
   import Guide from '../guide/index.vue'
+  import Donation from '../donation/index.vue'
   import ThemeSwitch from '../components/ThemeSwitch.vue'
   const route = useRoute(),
     router = useRouter()
@@ -35,6 +41,11 @@
   }
 </script>
 <style scoped>
+  .public-footer {
+    padding: 24px;
+    text-align: center;
+    color: var(--el-color-primary);
+  }
   .header-actions,
   nav {
     display: flex;

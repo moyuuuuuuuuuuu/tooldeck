@@ -24,7 +24,7 @@
   },
   "ui_schema": {},
   "output_schema": {
-    "type": "json"
+    "type": "stream"
   },
   "runtime_version": "8.1"
 }

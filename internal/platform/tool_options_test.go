@@ -154,8 +154,12 @@ func TestUploadManifestDefaultsAndExplicitOverrides(t *testing.T) {
 	tool = upload(override, map[string]string{
 		"runtime_version": "",
 		"build_command":   "",
+		"output_type":     "text/markdown",
 		"allowed_hosts":   "author.example.com, cdn.example.com",
 	})
+	if tool.Manifest.Output.Type != "markdown" {
+		t.Fatal("output override missing", tool.Manifest.Output.Type)
+	}
 	if tool.Manifest.RuntimeVersion != "3.12" || tool.Manifest.BuildCommand != "" || strings.Join(tool.Manifest.Network.AllowedHosts, ",") != "author.example.com,cdn.example.com" {
 		t.Fatalf("explicit overrides were not applied: %+v", tool.Manifest)
 	}

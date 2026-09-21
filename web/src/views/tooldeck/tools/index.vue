@@ -169,8 +169,16 @@
         style="margin: 12px 0"
         @input="markUploadDirty('allowedHosts')"
       />
+      <ElFormItem label="结果展示格式"
+        ><ElSelect v-model="outputType" style="width: 100%" @change="changeOutputType"
+          ><ElOption value="" label="跟随工具包声明（默认 JSON）" /><ElOption
+            v-for="format in outputFormats"
+            :key="format.value"
+            :value="format.value"
+            :label="format.label" /></ElSelect
+      ></ElFormItem>
       <ElFormItem label="SSE 流式输出"
-        ><ElSelect v-model="streamMode" style="width: 100%" @change="markUploadDirty('streamMode')"
+        ><ElSelect v-model="streamMode" style="width: 100%" @change="changeStreamMode"
           ><ElOption value="" label="跟随工具包声明（未声明则关闭）" /><ElOption
             value="true"
             label="开启 SSE 流式输出" /><ElOption
@@ -205,6 +213,7 @@
   </div>
 </template>
 <script setup lang="ts">
+  import { outputFormats, normalizeOutputType } from '../components/outputPresentation'
   import { useUserStore } from '@/store/modules/user'
   const isAdmin = () => useUserStore().info.roles?.includes('R_SUPER')
 
@@ -236,12 +245,20 @@
   }
   const isPublic = ref(true)
   const streamMode = ref('')
+  const outputType = ref('')
   const thirdParty = ref(false),
     allowedHosts = ref(''),
     apiEnabled = ref(true)
   type UploadField =
-    'buildVersion' | 'buildCommand' | 'thirdParty' | 'allowedHosts' | 'streamMode' | 'uploadMode'
+    | 'buildVersion'
+    | 'buildCommand'
+    | 'thirdParty'
+    | 'allowedHosts'
+    | 'streamMode'
+    | 'uploadMode'
+    | 'outputType'
   type UploadManifest = {
+    output_schema?: { type?: string }
     schema_version?: number
     name?: string
     title?: string
@@ -304,6 +321,26 @@
     if (useUserStore().isLogin) router.push('/tooldeck/guide')
     else router.push({ path: '/explore', query: { view: 'guide' } })
   }
+  function changeStreamMode() {
+    markUploadDirty('streamMode')
+    if (streamMode.value === 'true') {
+      outputType.value = 'stream'
+      markUploadDirty('outputType')
+    } else if (streamMode.value === 'false' && outputType.value === 'stream') {
+      outputType.value = 'json'
+      markUploadDirty('outputType')
+    }
+  }
+  function changeOutputType() {
+    markUploadDirty('outputType')
+    if (outputType.value === 'stream') {
+      streamMode.value = 'true'
+      markUploadDirty('streamMode')
+    } else if (outputType.value && streamMode.value === 'true') {
+      streamMode.value = 'false'
+      markUploadDirty('streamMode')
+    }
+  }
   function markUploadDirty(field: UploadField) {
     uploadDirty.add(field)
   }
@@ -313,6 +350,7 @@
     else if (field === 'buildCommand') buildCommand.value = String(value ?? '')
     else if (field === 'thirdParty') thirdParty.value = Boolean(value)
     else if (field === 'allowedHosts') allowedHosts.value = String(value ?? '')
+    else if (field === 'outputType') outputType.value = String(value ?? '')
     else if (field === 'streamMode') streamMode.value = String(value ?? '')
     else uploadMode.value = String(value ?? '')
   }
@@ -329,6 +367,12 @@
       const manifest = JSON.parse(await entry.async('string')) as UploadManifest
       if (!manifest || typeof manifest !== 'object' || manifest.schema_version !== 1)
         throw new Error('tooldeck.json 无效或 schema_version 不是 1')
+      const manifestOutput = normalizeOutputType(manifest.output_schema?.type)
+      const manifestStream = manifest.execution?.stream === true
+      if (manifestStream !== (manifestOutput === 'stream'))
+        throw new Error(
+          'SSE 配置无效：execution.stream 与 output_schema.type 必须同时启用或同时关闭'
+        )
       const runtime =
         { js: 'node', py: 'python', golang: 'go' }[manifest.runtime || ''] || manifest.runtime || ''
       if (manifest.runtime_version)
@@ -352,6 +396,7 @@
         'uploadMode',
         ['sync', 'async'].includes(manifest.execution?.mode || '') ? manifest.execution?.mode : ''
       )
+      setFromManifest('outputType', manifestOutput)
       manifestSummary.value =
         `已读取：${manifest.title || manifest.name || '未命名工具'} ${manifest.version ? 'v' + manifest.version : ''}`.trim()
     } catch (error) {
@@ -372,6 +417,7 @@
     thirdParty.value = false
     allowedHosts.value = ''
     streamMode.value = ''
+    outputType.value = ''
     uploadMode.value = ''
     isPublic.value = true
     apiEnabled.value = true
@@ -388,6 +434,7 @@
         public: String(isPublic.value),
         api_enabled: String(apiEnabled.value)
       }
+      if (uploadDirty.has('outputType') && outputType.value) options.output_type = outputType.value
       let mode = ''
       if (uploadDirty.has('uploadMode')) mode = uploadMode.value
       if (uploadDirty.has('buildVersion')) {

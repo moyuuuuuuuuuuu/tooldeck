@@ -17,7 +17,7 @@ export interface Tool {
     network: {enabled: boolean; allowed_hosts: string[]}; secrets: string[] }
 }
 export interface Artifact { file_id: string; name: string; mime: string; size: number; expires_at?: string; downloads_remaining?: number }
-export interface Run { run_id: string; tool_id: string; status: string; source?: 'web'|'api_key'|'oauth'|'guest'; env_overridden?: boolean; callback_url?: string; callback_attempts?: number; callback_sent?: boolean; callback_failed?: boolean; callback_error?: string; input: Record<string, any>; result: any; error?: string; cancel_error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
+export interface Run { output_type?: string; run_id: string; tool_id: string; status: string; source?: 'web'|'api_key'|'oauth'|'guest'; env_overridden?: boolean; callback_url?: string; callback_attempts?: number; callback_sent?: boolean; callback_failed?: boolean; callback_error?: string; input: Record<string, any>; result: any; error?: string; cancel_error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
 export interface RunPage { items: Run[]; total: number; page: number; page_size: number }
 export const toolApiPrefix = () => useUserStore().isLogin ? '/v1' : '/public'
 export const td = {

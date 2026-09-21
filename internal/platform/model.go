@@ -97,6 +97,7 @@ type ToolAuthor struct {
 	Created       time.Time `json:"created_at"`
 }
 type Run struct {
+	OutputType       string         `json:"output_type,omitempty"`
 	Events           []StreamEvent  `json:"stream_events,omitempty"`
 	CallbackURL      string         `json:"callback_url,omitempty"`
 	CallbackAttempts int            `json:"callback_attempts,omitempty"`
@@ -156,6 +157,7 @@ type Secret struct {
 	Tools  []string `json:"tools"`
 }
 type State struct {
+	Donation        DonationSettings             `json:"donation"`
 	AccountEnv      map[string]map[string]string `json:"account_env,omitempty"`
 	ToolEnv         map[string]map[string]string `json:"tool_env,omitempty"`
 	ReviewRequired  *bool                        `json:"review_required,omitempty"`
@@ -261,6 +263,14 @@ func validPath(p string) bool {
 	return p != "" && !strings.Contains(p, "\\") && !strings.Contains(p, ":") && !strings.HasPrefix(p, "/") && filepath.Clean(p) == p && p != ".." && !strings.HasPrefix(p, "../")
 }
 func (m *Manifest) Validate() error {
+	output, err := outputType(m.Output.Type)
+	if err != nil {
+		return err
+	}
+	m.Output.Type = output
+	if m.Execution.Stream != (output == "stream") {
+		return errors.New("execution.stream and output_schema.type must match: SSE requires stream output; stream output requires execution.stream=true")
+	}
 	if _, e := runtimeVersion(*m); e != nil {
 		return e
 	}

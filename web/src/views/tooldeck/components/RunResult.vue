@@ -9,12 +9,13 @@
   <ElAlert v-else-if="run.callback_sent" class="callback-state" :title="`结果已成功回调（第 ${run.callback_attempts || 1} 次送达）`" type="success" :closable="false" show-icon/>
   <ElAlert v-else-if="run.callback_url && !pending" class="callback-state" :title="run.callback_attempts ? `回调失败，等待第 ${run.callback_attempts + 1} 次尝试` : '等待发送结果回调'" :description="run.callback_error" type="warning" :closable="false" show-icon/>
   <div v-if="run.artifacts?.length" class="artifacts"><ElAlert title="运行产物默认保留 7 天；每个文件最多下载 3 次，到期或次数用完后自动删除。" type="warning" :closable="false"/><div v-for="file in run.artifacts" :key="file.file_id" class="artifact"><div><strong>{{file.name}}</strong><p>{{Math.ceil(file.size/1024)}} KB · 剩余 {{file.downloads_remaining ?? 3}} 次<span v-if="file.expires_at"> · {{new Date(file.expires_at).toLocaleString()}} 到期</span></p></div><ElButton type="primary" plain :disabled="!available(file)" @click="download(file)">下载</ElButton></div></div>
-  <pre v-if="outputText !== null" class="output-text">{{ outputText }}</pre>
+  <OutputView v-if="outputValue !== undefined && (outputValue !== null || run.status === 'succeeded')" :key="run.run_id" :value="outputValue" :type="run.output_type" />
   <ElCollapse v-if="extraResult"><ElCollapseItem title="补充信息"><pre>{{ JSON.stringify(extraResult,null,2) }}</pre></ElCollapseItem></ElCollapse>
   <ElCollapse v-if="run.logs"><ElCollapseItem title="执行日志"><pre>{{ run.logs }}</pre></ElCollapseItem></ElCollapse>
  </section>
 </template>
 <script setup lang="ts">
+import OutputView from './OutputView.vue'
 import {toolApiPrefix} from '@/api/tooldeck'
 import {ref,computed,watch,onBeforeUnmount} from 'vue'
 import {useUserStore} from '@/store/modules/user'
@@ -43,7 +44,7 @@ async function subscribe(id:string,controller:AbortController){
 const props=defineProps<{run:Run|null}>();const emit=defineEmits(['update'])
 // Render the common {result: ...} package envelope without showing its field name.
 const wrappedResult=computed(()=>{const value=props.run?.result;return value!==null && typeof value==='object' && !Array.isArray(value) && Object.prototype.hasOwnProperty.call(value,'result')})
-const outputText=computed(()=>{const value=wrappedResult.value?props.run?.result.result:props.run?.result;if(value===undefined || value===null)return null;return typeof value==='string'?value:JSON.stringify(value,null,2)})
+const outputValue=computed(()=>wrappedResult.value?props.run?.result.result:props.run?.result)
 const extraResult=computed(()=>{if(!wrappedResult.value)return null;const extra=Object.fromEntries(Object.entries(props.run!.result).filter(([key])=>key!=='result'));return Object.keys(extra).length?extra:null})
 const pending=computed(()=>['queued','running','canceling'].includes(props.run?.status||''))
 const cancelable=computed(()=>['queued','running'].includes(props.run?.status||''))
