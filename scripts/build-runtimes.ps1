@@ -15,7 +15,7 @@ try {
         python { "python:${version}-slim-bookworm" }
         go { "golang:${version}-bookworm" }
       }
-      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-build2" -f "runtimes/${runtime}.Dockerfile" .
+      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-build3" -f "runtimes/${runtime}.Dockerfile" .
       if ($LASTEXITCODE -ne 0) { throw "Runtime build failed: ${runtime} ${version}" }
     }
   }

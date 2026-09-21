@@ -172,7 +172,8 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	case "golang":
 		runtime = "go"
 	}
-	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-build2", "--format", "{{.Id}}").Output()
+	buildRevision := "build3"
+	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-"+buildRevision, "--format", "{{.Id}}").Output()
 	if e != nil {
 		version, versionErr := runtimeVersion(t.Manifest)
 		if versionErr != nil {
@@ -196,7 +197,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		}
 		liveLogs.Write([]byte("首次使用该版本，正在准备运行环境...\n"))
 		prepareCtx, prepareCancel := context.WithTimeout(parent, 20*time.Minute)
-		tag := "tooldeck-runtime-" + runtime + ":" + version + "-build2"
+		tag := "tooldeck-runtime-" + runtime + ":" + version + "-" + buildRevision
 		prepare := exec.CommandContext(prepareCtx, "docker", "build", "--progress=plain", "--build-arg", "BASE_IMAGE="+base, "-t", tag, "-f", "/runtime-context/runtimes/"+runtime+".Dockerfile", "/runtime-context")
 		prepare.Stdout = liveLogs
 		prepare.Stderr = liveLogs
