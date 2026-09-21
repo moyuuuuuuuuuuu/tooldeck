@@ -1,7 +1,7 @@
 ARG BASE_IMAGE=node:22-bookworm-slim
 FROM ${BASE_IMAGE}
 ARG DEBIAN_MIRROR=mirrors.aliyun.com
-RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i "s|deb.debian.org/debian|${DEBIAN_MIRROR}/debian|g; s|deb.debian.org/debian-security|${DEBIAN_MIRROR}/debian-security|g" {} +
+RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i "s|deb.debian.org/debian-security|security.debian.org/debian-security|g; s|deb.debian.org/debian|${DEBIAN_MIRROR}/debian|g" {} +
 RUN apt-get update && apt-get install -y --no-install-recommends socat ca-certificates build-essential python3 && rm -rf /var/lib/apt/lists/*
 COPY runtimes/entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
