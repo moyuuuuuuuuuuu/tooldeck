@@ -172,6 +172,8 @@ func (s *Server) Handler() http.Handler {
 			s.donationEndpoint(w, r, p, false)
 		case path == "my-tools":
 			s.myTools(w, r, p)
+		case len(parts) == 2 && parts[0] == "tools" && r.Method == "DELETE":
+			s.deleteTool(w, r, p, parts[1])
 		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "publication":
 			s.publication(w, r, p, parts[1])
 		case path == "playground":
@@ -234,11 +236,7 @@ func (s *Server) Handler() http.Handler {
 				pageSize = 20
 			}
 			total := len(list)
-			start := (page - 1) * pageSize
-			if start > total {
-				start = total
-			}
-			end := min(start+pageSize, total)
+			start, end := pageBounds(total, page, pageSize)
 			if r.URL.Query().Has("page") || r.URL.Query().Has("page_size") {
 				jsonResponse(w, 200, map[string]any{"items": list[start:end], "total": total, "page": page, "page_size": pageSize})
 				return
@@ -280,6 +278,18 @@ func (s *Server) Handler() http.Handler {
 			fail(w, 404, "not found")
 		}
 	})
+}
+
+func pageBounds(total, page, pageSize int) (int, int) {
+	pageIndex := page - 1
+	if pageIndex > total/pageSize {
+		return total, total
+	}
+	start := pageIndex * pageSize
+	if start > total {
+		start = total
+	}
+	return start, min(start+pageSize, total)
 }
 func (s *Server) serveWeb(w http.ResponseWriter, r *http.Request) {
 	root := os.Getenv("TOOLDECK_WEB_DIR")

@@ -67,6 +67,9 @@ func (s *Server) serveRunArtifact(w http.ResponseWriter, r *http.Request, f File
 	s.store.State.Files[current.ID] = current
 	s.updateRunArtifactLocked(current)
 	if err := s.store.save(); err != nil {
+		current.DownloadsRemaining++
+		s.store.State.Files[current.ID] = current
+		s.updateRunArtifactLocked(current)
 		s.store.Unlock()
 		fail(w, 500, "cannot reserve artifact download")
 		return
@@ -75,22 +78,29 @@ func (s *Server) serveRunArtifact(w http.ResponseWriter, r *http.Request, f File
 
 	body, err := s.openFile(r.Context(), current)
 	if err != nil {
-		s.store.Lock()
-		if restored, exists := s.store.State.Files[current.ID]; exists {
-			restored.DownloadsRemaining++
-			s.store.State.Files[current.ID] = restored
-			s.updateRunArtifactLocked(restored)
-			_ = s.store.save()
-		}
-		s.store.Unlock()
+		s.restoreArtifactDownload(current.ID)
 		fail(w, 502, "object storage download failed")
 		return
 	}
 	defer body.Close()
 	s.writeDownloadHeaders(w, current)
-	_, _ = io.Copy(w, body)
+	if _, err = io.Copy(w, body); err != nil {
+		s.restoreArtifactDownload(current.ID)
+		return
+	}
 	if current.DownloadsRemaining == 0 {
 		s.removeArtifact(current)
+	}
+}
+
+func (s *Server) restoreArtifactDownload(id string) {
+	s.store.Lock()
+	defer s.store.Unlock()
+	if restored, exists := s.store.State.Files[id]; exists {
+		restored.DownloadsRemaining++
+		s.store.State.Files[id] = restored
+		s.updateRunArtifactLocked(restored)
+		_ = s.store.save()
 	}
 }
 

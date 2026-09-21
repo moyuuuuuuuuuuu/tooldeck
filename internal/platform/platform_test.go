@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+func TestPageBoundsRejectsOverflowingPage(t *testing.T) {
+	start, end := pageBounds(3, int(^uint(0)>>1), 100)
+	if start != 3 || end != 3 {
+		t.Fatalf("unexpected bounds: %d:%d", start, end)
+	}
+}
+
 const manifestJSON = `{"schema_version":1,"name":"echo","version":"1.0.0","runtime":"python","entrypoint":"main.py","execution":{"mode":"sync","timeout_seconds":10,"memory_mb":128},"input_schema":{"type":"object","properties":{"text":{"type":"string","minLength":1}},"required":["text"]},"ui_schema":{},"network":{"enabled":false,"allowed_hosts":[]},"secrets":[]}`
 
 func testServer(t *testing.T) *Server {

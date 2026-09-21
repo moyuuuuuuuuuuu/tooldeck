@@ -2,6 +2,8 @@ package platform
 
 import (
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -76,5 +78,59 @@ func TestDraftRequiresSuccessfulBuildBeforeSubmission(t *testing.T) {
 	call("/", `{"action":"submit"}`, 200)
 	if s.store.State.Tools[tool.ID].ReviewStatus != "pending" {
 		t.Fatal("successful build was not submitted for review")
+	}
+}
+
+func TestDeleteToolLifecycle(t *testing.T) {
+	s := testServer(t)
+	owner := Principal{UserID: "alice", Session: true, Tools: []string{"*"}}
+	tool := Tool{ID: "mine", Owner: "alice", ReviewStatus: "approved", BuildStatus: "ready", Artifact: "artifact-1", Manifest: Manifest{Name: "demo"}}
+	s.store.State.Tools[tool.ID] = tool
+	call := func(want int) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		s.deleteTool(w, httptest.NewRequest("DELETE", "/", nil), owner, tool.ID)
+		if w.Code != want {
+			t.Fatalf("%d %s", w.Code, w.Body.String())
+		}
+		return w
+	}
+	call(409)
+
+	tool.ReviewStatus = "pending"
+	s.store.State.Tools[tool.ID] = tool
+	s.store.State.ToolEnv = map[string]map[string]string{"alice:demo:developer:alice": {"TOKEN": "encrypted"}}
+	packageDir := filepath.Join(s.store.Root, "packages", tool.ID)
+	artifactDir := filepath.Join(s.store.Root, "artifacts", tool.Artifact)
+	if err := os.MkdirAll(packageDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(artifactDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	call(200)
+	if _, ok := s.store.State.Tools[tool.ID]; ok {
+		t.Fatal("deleted review tool remained in store")
+	}
+	if len(s.store.State.ToolEnv) != 0 {
+		t.Fatal("deleted tool environment remained in store")
+	}
+	for _, path := range []string{packageDir, artifactDir} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("tool data was not removed: %s", path)
+		}
+	}
+}
+
+func TestDeleteToolRejectsActiveRun(t *testing.T) {
+	s := testServer(t)
+	owner := Principal{UserID: "alice", Session: true, Tools: []string{"*"}}
+	tool := Tool{ID: "mine", Owner: "alice", ReviewStatus: "pending", BuildStatus: "ready", Manifest: Manifest{Name: "demo"}}
+	s.store.State.Tools[tool.ID] = tool
+	s.store.State.Runs["active"] = Run{ID: "active", ToolID: tool.ID, Status: "running"}
+	w := httptest.NewRecorder()
+	s.deleteTool(w, httptest.NewRequest("DELETE", "/", nil), owner, tool.ID)
+	if w.Code != 409 {
+		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 }

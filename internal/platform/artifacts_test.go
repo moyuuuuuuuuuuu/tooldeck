@@ -1,6 +1,8 @@
 package platform
 
 import (
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -8,6 +10,16 @@ import (
 	"testing"
 	"time"
 )
+
+type failingResponseWriter struct {
+	header http.Header
+}
+
+func (w *failingResponseWriter) Header() http.Header { return w.header }
+func (w *failingResponseWriter) WriteHeader(int)     {}
+func (w *failingResponseWriter) Write([]byte) (int, error) {
+	return 0, errors.New("client disconnected")
+}
 
 func addTestArtifact(t *testing.T, s *Server, expires time.Time) File {
 	t.Helper()
@@ -44,6 +56,20 @@ func TestRunArtifactExpiresAfterThreeDownloads(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(s.store.Root, "files", file.ID)); !os.IsNotExist(err) {
 		t.Fatal("stored artifact was not removed")
+	}
+}
+
+func TestRunArtifactInterruptedDownloadRestoresQuota(t *testing.T) {
+	s := testServer(t)
+	file := addTestArtifact(t, s, time.Now().Add(time.Hour))
+	w := &failingResponseWriter{header: http.Header{}}
+	s.download(w, httptest.NewRequest("GET", "/", nil), Principal{UserID: "alice", Session: true, Admin: true}, file.ID)
+	stored, exists := s.store.State.Files[file.ID]
+	if !exists || stored.DownloadsRemaining != 3 {
+		t.Fatalf("interrupted download consumed quota: %#v", stored)
+	}
+	if _, err := os.Stat(filepath.Join(s.store.Root, "files", file.ID)); err != nil {
+		t.Fatal("interrupted download deleted artifact", err)
 	}
 }
 

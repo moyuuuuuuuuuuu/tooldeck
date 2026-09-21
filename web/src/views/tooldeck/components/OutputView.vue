@@ -1,6 +1,9 @@
 <template>
   <section class="output-view">
-    <div class="format-label">{{ label }}</div>
+    <div class="output-heading">
+      <div class="format-label">{{ label }}</div>
+      <ElButton v-if="copyable" link type="primary" @click="copyOutput">复制结果</ElButton>
+    </div>
     <ElTabs v-if="format === 'html' && typeof value === 'string'" v-model="tab">
       <ElTabPane label="页面预览" name="preview"
         ><p class="hint">静态预览：脚本、表单、外部资源和链接跳转已禁用。</p
@@ -13,8 +16,9 @@
     <ElTabs v-else-if="format === 'markdown' && typeof value === 'string'" v-model="tab">
       <ElTabPane label="页面预览" name="preview"
         ><p class="hint">静态预览：原始 HTML、外部资源和链接跳转已禁用。</p
-        ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml"
-      /></ElTabPane>
+        ><div class="preview-scroll"
+          ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml" /></div
+      ></ElTabPane>
       <ElTabPane label="Markdown 源码" name="source">
         <pre>{{ value }}</pre>
       </ElTabPane>
@@ -46,6 +50,7 @@
 </template>
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
+  import { ElMessage } from 'element-plus'
   import { MdPreview } from 'md-editor-v3'
   import 'md-editor-v3/lib/preview.css'
   import {
@@ -62,8 +67,11 @@
     ['html', 'markdown', 'text', 'stream', 'csv', 'xml'].includes(format.value)
   )
   const text = computed(() =>
-    typeof props.value === 'string' ? props.value : JSON.stringify(props.value, null, 2)
+    typeof props.value === 'string'
+      ? props.value
+      : (JSON.stringify(props.value, null, 2) ?? String(props.value))
   )
+  const copyable = computed(() => format.value !== 'image-gallery')
   const html = computed(() =>
     format.value === 'html' && typeof props.value === 'string' ? htmlPreview(props.value) : ''
   )
@@ -71,6 +79,14 @@
     format.value === 'csv' && typeof props.value === 'string' ? csvPreview(props.value) : null
   )
   const tab = ref('preview')
+  async function copyOutput() {
+    try {
+      await navigator.clipboard.writeText(text.value)
+      ElMessage.success('运行结果已复制')
+    } catch {
+      ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+    }
+  }
   watch(
     () => props.type,
     () => {
@@ -87,6 +103,12 @@
     font-size: 12px;
     color: var(--el-text-color-secondary);
     margin: 8px 0;
+  }
+  .output-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
   pre {
     white-space: pre-wrap;
@@ -107,6 +129,11 @@
   .csv-table {
     max-height: 480px;
     overflow: auto;
+  }
+  .preview-scroll {
+    max-height: 480px;
+    overflow: auto;
+    border-radius: 8px;
   }
   table {
     border-collapse: collapse;
