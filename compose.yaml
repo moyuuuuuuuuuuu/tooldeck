@@ -5,7 +5,7 @@ services:
       context: .
       network: "${TOOLDECK_BUILD_NETWORK:-default}"
       extra_hosts:
-        - "docker.internal:host-gateway"
+        - "${TOOLDECK_BUILD_HOST_ALIAS:-docker.internal:host-gateway}"
       args:
         HTTP_PROXY: "${TOOLDECK_BUILD_HTTP_PROXY:-}"
         HTTPS_PROXY: "${TOOLDECK_BUILD_HTTPS_PROXY:-}"

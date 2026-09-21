@@ -228,6 +228,8 @@ TOOLDECK_BUILD_NO_PROXY=localhost,127.0.0.1
 
 Compose 还会在构建容器中将 `docker.internal` 动态映射到 Docker 的实际宿主机网关，避免手写可能不正确的 `172.17.0.1`。代理允许 Docker 网桥访问时，也可以不启用 host 构建网络，直接使用 `http://docker.internal:7890` 作为构建代理地址。
 
+旧版群晖 Docker 如果提示 `host-gateway IP not found`，可在单次构建命令中同时设置 `TOOLDECK_BUILD_NETWORK=host` 与 `TOOLDECK_BUILD_HOST_ALIAS=docker.internal:127.0.0.1`。这样别名会在 host 构建网络内指向 NAS 回环地址，不依赖 `host-gateway` 关键字。
+
 匿名用户只能在 ToolDeck 同源网页中运行公开、已审核、已构建且不需要环境变量的工具。`/api/v1` 下的所有工具查询、执行、流式事件和结果接口均要求有效的 API Key、OAuth Token 或登录会话；匿名访客 Cookie 不具备 API 调用权限。
 
 ## 执行隔离与当前边界
