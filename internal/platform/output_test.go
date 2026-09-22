@@ -69,6 +69,11 @@ func TestRunOutputSnapshot(t *testing.T) {
 		if s.store.State.Runs[response.Data.ID].OutputType != want {
 			t.Fatal("run changed with tool declaration")
 		}
+		// The browser serializes versions of the same tool. Complete this case
+		// before submitting the next output format.
+		completed := s.store.State.Runs[response.Data.ID]
+		completed.Status = "succeeded"
+		s.store.State.Runs[response.Data.ID] = completed
 	}
 	legacy := Manifest{}
 	legacy.Execution.Stream = true

@@ -56,10 +56,10 @@
               size="large"
               :loading="running"
               :disabled="
-                uploading > 0 || pending || (!!tool.build_status && tool.build_status !== 'ready')
+                running || uploading > 0 || pending || (!!tool.build_status && tool.build_status !== 'ready')
               "
               @click="execute"
-              >{{ pending ? '正在执行' : '运行工具' }}</ElButton
+              >{{ pending ? '请等待当前运行结束' : '运行工具' }}</ElButton
             ></div
           >
         </section>
@@ -205,6 +205,7 @@
   }))
   const requestBodyExample = computed(() => JSON.stringify(requestPayload.value, null, 2))
   let timer: ReturnType<typeof setTimeout> | undefined
+  let live = true
   function defaults(s: Field): any {
     if (s.default !== undefined) return structuredClone(s.default)
     if (s.type === 'object')
@@ -236,27 +237,39 @@
   async function refresh() {
     if (result.value) result.value = await td.run(result.value.run_id)
   }
+  async function syncActiveRun() {
+    if (!tool.value) return false
+    const active = await td.activeRun(tool.value.id)
+    if (active) result.value = active
+    return !!active
+  }
   async function poll() {
-    if (!result.value) return
     try {
-      await refresh()
-      if (pending.value) timer = setTimeout(poll, 1500)
+      if (pending.value) await refresh()
+      else await syncActiveRun()
     } catch {
-      ElMessage.warning('状态刷新失败，请到使用记录查看；任务不会重复提交')
+      if (pending.value) ElMessage.warning('状态刷新失败，请到使用记录查看；任务不会重复提交')
+    } finally {
+      if (live) timer = setTimeout(poll, pending.value ? 1500 : 3000)
     }
   }
   async function execute() {
-    if (!tool.value) return
+    if (!tool.value || running.value || pending.value) return
     if (!user.isLogin && (tool.value.manifest.env?.length || tool.value.manifest.secrets?.length)) {
       await router.push({ path: '/auth/login', query: { redirect: route.fullPath } })
       return
     }
     running.value = true
+    stopPoll()
     try {
+      if (await syncActiveRun()) return
       result.value = await td.execute(tool.value.id, input.value)
-      if (pending.value) timer = setTimeout(poll, 1000)
+    } catch {
+      // The server may reject a simultaneous submission from another tab.
+      await syncActiveRun().catch(() => {})
     } finally {
       running.value = false
+      if (live) timer = setTimeout(poll, pending.value ? 1000 : 3000)
     }
   }
   onMounted(async () => {
@@ -274,12 +287,16 @@
         await router.replace({ path: '/auth/login', query: { redirect: route.fullPath } })
         return
       }
-      if (tool.value) input.value = defaults(tool.value.manifest.input_schema)
+      if (tool.value) {
+        input.value = defaults(tool.value.manifest.input_schema)
+        await syncActiveRun().catch(() => {})
+        if (live) timer = setTimeout(poll, pending.value ? 1500 : 3000)
+      }
     } finally {
       loading.value = false
     }
   })
-  onBeforeUnmount(stopPoll)
+  onBeforeUnmount(() => { live = false; stopPoll() })
 </script>
 <style scoped>
   .run-page {

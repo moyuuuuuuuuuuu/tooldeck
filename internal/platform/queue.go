@@ -11,7 +11,7 @@ import (
 type queueConfig struct{ Workers, PerUser, Builds int }
 
 func loadQueueConfig() (queueConfig, error) {
-	q := queueConfig{2, 1, 1}
+	q := queueConfig{2, 2, 1}
 	for name, dst := range map[string]*int{"TOOLDECK_WORKER_CONCURRENCY": &q.Workers, "TOOLDECK_USER_CONCURRENCY": &q.PerUser, "TOOLDECK_BUILD_CONCURRENCY": &q.Builds} {
 		if raw := os.Getenv(name); raw != "" {
 			n, err := strconv.Atoi(raw)

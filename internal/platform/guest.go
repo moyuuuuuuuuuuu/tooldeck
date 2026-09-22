@@ -68,6 +68,8 @@ func (s *Server) guestEndpoint(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 200, list)
 	case len(parts) == 3 && parts[0] == "tools" && parts[2] == "runs" && r.Method == "POST":
 		s.createRun(w, r, p, parts[1])
+	case len(parts) == 3 && parts[0] == "tools" && parts[2] == "active-run" && r.Method == "GET":
+		s.browserActiveRun(w, r, p, parts[1])
 	case len(parts) == 3 && parts[0] == "runs" && parts[2] == "events" && r.Method == "GET":
 		s.streamRun(w, r, p, parts[1])
 	case parts[0] == "runs" && ((len(parts) == 2 && r.Method == "GET") || (len(parts) == 3 && parts[2] == "cancel" && r.Method == "POST")):

@@ -26,6 +26,7 @@ export const td = {
   tools: () => request.get<Tool[]>({url: `${toolApiPrefix()}/tools`}),
   runs: (page = 1, pageSize = 20) => request.get<RunPage>({url: `/v1/runs?mine=1&page=${page}&page_size=${pageSize}`}),
   run: (id: string) => request.get<Run>({url: `${toolApiPrefix()}/runs/${id}`}),
+  activeRun: (id: string) => request.get<Run | null>({url: `${toolApiPrefix()}/tools/${id}/active-run`}),
   execute: (id: string, input: any) => request.post<Run>({url: `${toolApiPrefix()}/tools/${id}/runs`, data: {input}, timeout: 25000, headers: {'Idempotency-Key': Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('')}}),
   cancel: (id: string) => request.post<Run>({url: `${toolApiPrefix()}/runs/${id}/cancel`}),
   upload: (file: File, kind = 'files', mode = '', options: Record<string,string> = {}) => {const data = new FormData(); data.append('file', file); if (mode) data.append('mode',mode); for(const [key,value] of Object.entries(options))data.append(key,value); return request.post<any>({url: `${kind==='files'?toolApiPrefix():'/v1'}/${kind}`, data, timeout: 120000})},

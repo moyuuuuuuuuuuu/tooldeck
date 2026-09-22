@@ -89,11 +89,32 @@ func TestQueueClaimRollbackAndToolLimit(t *testing.T) {
 	}
 }
 func TestQueueConfiguration(t *testing.T) {
+	for _, name := range []string{"TOOLDECK_WORKER_CONCURRENCY", "TOOLDECK_USER_CONCURRENCY", "TOOLDECK_BUILD_CONCURRENCY"} {
+		t.Setenv(name, "")
+	}
+	config, err := loadQueueConfig()
+	if err != nil || config != (queueConfig{Workers: 2, PerUser: 2, Builds: 1}) {
+		t.Fatalf("unexpected default queue configuration: %+v, %v", config, err)
+	}
 	for _, value := range []string{"0", "-1", "65", "abc"} {
 		t.Setenv("TOOLDECK_WORKER_CONCURRENCY", value)
 		if _, err := loadQueueConfig(); err == nil {
 			t.Fatal("accepted", value)
 		}
+	}
+}
+func TestSameUserSameToolConcurrentClaims(t *testing.T) {
+	s := testServer(t)
+	s.queue = queueConfig{Workers: 2, PerUser: 2, Builds: 1}
+	tool := Tool{ID: "shared", Owner: "author", Manifest: Manifest{Name: "demo"}}
+	s.store.State.Tools[tool.ID] = tool
+	s.store.State.Runs["r1"] = Run{ID: "r1", ToolID: tool.ID, Owner: "caller", Status: "queued", Created: time.Now()}
+	s.store.State.Runs["r2"] = Run{ID: "r2", ToolID: tool.ID, Owner: "caller", Status: "queued", Created: time.Now().Add(time.Second)}
+	if first, second := s.claimRun(), s.claimRun(); first == nil || second == nil || first.ID == second.ID {
+		t.Fatalf("same caller and tool should run concurrently: first=%v second=%v", first, second)
+	}
+	if extra := s.claimRun(); extra != nil {
+		t.Fatalf("global limit exceeded: %v", extra)
 	}
 }
 func TestSQLiteLegacyImportBackupAndExport(t *testing.T) {

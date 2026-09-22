@@ -238,6 +238,10 @@ func (s *Server) Handler() http.Handler {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v1/")
 		parts := strings.Split(path, "/")
 		switch {
+		case path == "admin/tools" || strings.HasPrefix(path, "admin/tools/"):
+			s.adminToolsEndpoint(w, r, p, parts)
+		case path == "admin/runs" || strings.HasPrefix(path, "admin/runs/"):
+			s.adminRunsEndpoint(w, r, p, parts)
 		case path == "inbox" || strings.HasPrefix(path, "inbox/"):
 			s.inboxEndpoint(w, r, p, parts)
 		case path == "docker-resources":
@@ -299,6 +303,8 @@ func (s *Server) Handler() http.Handler {
 			s.uploadTool(w, r, p)
 		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "runs" && r.Method == "POST":
 			s.createRun(w, r, p, parts[1])
+		case len(parts) == 3 && parts[0] == "tools" && parts[2] == "active-run" && r.Method == "GET":
+			s.browserActiveRun(w, r, p, parts[1])
 		case path == "runs" && r.Method == "GET":
 			s.store.Lock()
 			list := []Run{}
@@ -462,7 +468,7 @@ func (s *Server) core(w http.ResponseWriter, r *http.Request, p Principal) {
 		children := []any{menu("tools", "Tools", "工具广场", "ri:apps-line"), menu("my-tools", "MyTools", "我的工具", "ri:folder-user-line"), menu("playground", "Playground", "在线调试", "ri:code-line"), menu("runs", "Runs", "运行记录", "ri:history-line"), menu("credentials", "Credentials", "访问凭证", "ri:key-2-line"), menu("guide", "Guide", "开发文档", "ri:book-line"), menu("profile", "Profile", "个人中心", "ri:user-line"), menu("donation", "Donation", "支持 ToolDeck", "ri:heart-line")}
 		children = append(children, hiddenMenu("run/:id", "ToolRun", "运行工具", "/tooldeck/tools"))
 		if p.Admin {
-			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("nodes", "Nodes", "运行与治理", "ri:server-line"))
+			children = append(children, menu("review", "Review", "工具审核", "ri:shield-check-line"), menu("tool-monitor", "ToolMonitor", "工具监控", "ri:dashboard-3-line"), menu("nodes", "Nodes", "运行与治理", "ri:server-line"))
 		}
 		jsonResponse(w, 200, children)
 	default:
@@ -758,6 +764,13 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			return
 		}
 	} else {
+		if p.Session || p.Guest {
+			if active := s.activeBrowserRun(p.owner(), t); active != nil {
+				s.store.Unlock()
+				fail(w, 409, "网页端此工具已有运行中的任务，请等待完成后再试")
+				return
+			}
+		}
 		queued := 0
 		for _, x := range s.store.State.Runs {
 			if x.Status == "queued" {
