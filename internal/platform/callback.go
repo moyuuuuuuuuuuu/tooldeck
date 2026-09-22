@@ -64,7 +64,7 @@ func validateCallbackURL(raw string) error {
 }
 
 func publicCallbackIP(ip net.IP) bool {
-	return ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsUnspecified() && !ip.IsMulticast() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast()
+	return publicIP(ip)
 }
 
 func callbackHTTPClient() *http.Client {

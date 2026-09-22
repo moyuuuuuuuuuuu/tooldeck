@@ -35,6 +35,9 @@ func ExtractPackage(zipPath, dest string) (Manifest, error) {
 		if f.UncompressedSize64 > 64<<20 {
 			return m, errors.New("entry too large")
 		}
+		if strings.EqualFold(p, "tooldeck.json") && f.UncompressedSize64 > 128<<10 {
+			return m, errors.New("manifest too large")
+		}
 		total += f.UncompressedSize64
 		if total > 128<<20 {
 			return m, errors.New("archive exceeds 128 MB expanded")
@@ -87,6 +90,10 @@ func ExtractPackage(zipPath, dest string) (Manifest, error) {
 	d.DisallowUnknownFields()
 	if e = d.Decode(&m); e != nil {
 		return m, e
+	}
+	var extra any
+	if d.Decode(&extra) != io.EOF {
+		return m, errors.New("manifest must contain one JSON value")
 	}
 	if e = m.Validate(); e != nil {
 		return m, e

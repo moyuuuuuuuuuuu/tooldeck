@@ -98,6 +98,13 @@ func (s *Server) execute(parent context.Context, r Run) {
 		finish(err)
 		return
 	}
+	// Recheck legacy secret names before exposing them to the Docker CLI process.
+	for _, name := range m.Secrets {
+		if e := validEnv([]EnvField{{Name: name}}); e != nil {
+			finish(e)
+			return
+		}
+	}
 	if strings.HasPrefix(r.Owner, "guest:") && !guestTool(tool) {
 		finish(fmt.Errorf("工具已不支持匿名运行，请登录后重试"))
 		return

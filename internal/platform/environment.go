@@ -22,11 +22,11 @@ func validEnv(fields []EnvField) error {
 	seen := map[string]bool{}
 	for _, f := range fields {
 		n := f.Name
-		if !regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`).MatchString(n) || seen[n] || strings.HasPrefix(n, "TOOLDECK_") || strings.Contains(n, "PROXY") || strings.HasPrefix(n, "LD_") || strings.HasPrefix(n, "DYLD_") {
+		if !regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`).MatchString(n) || seen[n] || strings.HasPrefix(n, "TOOLDECK_") || strings.HasPrefix(n, "DOCKER_") || strings.Contains(n, "PROXY") || strings.HasPrefix(n, "LD_") || strings.HasPrefix(n, "DYLD_") {
 			return fmt.Errorf("无效或保留的变量名：%s", n)
 		}
 		switch n {
-		case "PATH", "HOME", "TMPDIR", "GOCACHE", "GOMODCACHE", "NODE_OPTIONS", "NODE_USE_ENV_PROXY", "PYTHONPATH", "PYTHONHOME", "PYTHONDONTWRITEBYTECODE", "BASH_ENV", "ENV", "SHELLOPTS", "PHPRC", "PHP_INI_SCAN_DIR":
+		case "PATH", "HOME", "TMPDIR", "GOCACHE", "GOMODCACHE", "GODEBUG", "GOGC", "GOMEMLIMIT", "GOMAXPROCS", "GOTRACEBACK", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_OPTIONS", "NODE_USE_ENV_PROXY", "PYTHONPATH", "PYTHONHOME", "PYTHONDONTWRITEBYTECODE", "BASH_ENV", "ENV", "SHELLOPTS", "PHPRC", "PHP_INI_SCAN_DIR":
 			return fmt.Errorf("保留的变量名：%s", n)
 		}
 		seen[n] = true
@@ -56,6 +56,10 @@ func (s *Server) toolEnvironment(t Tool, owner string) ([]string, []string, erro
 }
 
 func (s *Server) toolEnvironmentWithOverrides(t Tool, owner string, overrides map[string]string) ([]string, []string, error) {
+	// Recheck persisted versions too: older manifests may contain newly reserved names.
+	if err := validEnv(t.Manifest.Env); err != nil {
+		return nil, nil, err
+	}
 	personal := t
 	personal.Manifest.EnvMode = "user"
 	values := s.store.State.ToolEnv[envKey(personal, owner)]

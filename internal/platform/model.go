@@ -372,7 +372,7 @@ func (m *Manifest) Validate() error {
 		return errors.New("network requires an explicit allowed_hosts list")
 	}
 	for _, n := range m.Secrets {
-		if !regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`).MatchString(n) || strings.HasPrefix(n, "TOOLDECK_") || strings.Contains(n, "PROXY") || n == "PATH" || n == "LD_PRELOAD" || n == "NODE_OPTIONS" || n == "PYTHONPATH" {
+		if validEnv([]EnvField{{Name: n}}) != nil {
 			return errors.New("invalid or reserved secret name")
 		}
 	}
