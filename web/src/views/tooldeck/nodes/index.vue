@@ -85,7 +85,7 @@
             ><template #default="{ row }">{{ bytes(row.bytes) }}</template></ElTableColumn
           ><ElTableColumn label="状态"
             ><template #default="{ row }">{{
-              row.candidate ? '可清理' : '保留'
+              row.special_file ? '含特殊文件，不可清理' : row.candidate ? '可清理' : '保留'
             }}</template></ElTableColumn
           ></ElTable
         >

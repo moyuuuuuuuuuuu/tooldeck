@@ -28,10 +28,20 @@ type StorageItem struct {
 	Bytes     int64     `json:"bytes"`
 	Modified  time.Time `json:"modified_at"`
 	Candidate bool      `json:"candidate"`
+	Special   bool      `json:"special_file,omitempty"`
 }
 
 func treeSize(path string) (int64, error) {
+	size, _, err := measureTree(path, true)
+	return size, err
+}
+
+// Inventory may encounter live Unix sockets in jobs (for example proxy.sock).
+// They consume no regular-file bytes and must never be offered for cleanup.
+// Package and artifact accounting remains strict through treeSize.
+func measureTree(path string, strict bool) (int64, bool, error) {
 	var size int64
+	var special bool
 	err := filepath.WalkDir(path, func(_ string, d fs.DirEntry, e error) error {
 		if e != nil {
 			return e
@@ -50,13 +60,17 @@ func treeSize(path string) (int64, error) {
 				return e
 			}
 			if !info.Mode().IsRegular() {
-				return errors.New("storage contains a special file")
+				special = true
+				if strict {
+					return errors.New("storage contains a special file")
+				}
+				return nil
 			}
 			size += info.Size()
 		}
 		return nil
 	})
-	return size, err
+	return size, special, err
 }
 func (s *Server) reserveStorage(owner, tool string, size int64) (func(), error) {
 	s.store.Lock()
@@ -138,15 +152,15 @@ func (s *Server) storageInventory() ([]StorageItem, error) {
 			if err != nil {
 				return nil, err
 			}
-			size, err := treeSize(filepath.Join(s.store.Root, relative))
+			size, special, err := measureTree(filepath.Join(s.store.Root, relative), false)
 			if err != nil {
 				return nil, err
 			}
-			candidate := dir != "quarantine" && !referenced[relative] && time.Since(info.ModTime()) > 24*time.Hour
+			candidate := dir != "quarantine" && !referenced[relative] && !special && time.Since(info.ModTime()) > 24*time.Hour
 			if buildsActive && (dir == "jobs" || dir == "artifacts") {
 				candidate = false
 			}
-			list = append(list, StorageItem{relative, size, info.ModTime(), candidate})
+			list = append(list, StorageItem{Path: relative, Bytes: size, Modified: info.ModTime(), Candidate: candidate, Special: special})
 		}
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Path < list[j].Path })
