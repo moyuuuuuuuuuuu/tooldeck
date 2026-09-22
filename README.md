@@ -272,6 +272,8 @@ npm run build
 
 ## 上游与许可
 
+本仓库原创代码采用 [MIT 许可证](LICENSE)。
+
 前端基于 [SaiAdmin 6.x](https://github.com/saithink/saiadmin6.x) 的 `saiadmin-artd`，上游提交为 `8f5f6fa57b75c63c5cf370b4f4541e9e529eb306`，未引入其 PHP 后端。保留 [前端许可证](web/LICENSE) 和 [SaiAdmin 许可证](web/LICENSE-SaiAdmin)，使用和分发时请遵守对应许可。
 
 ### 群晖兼容部署
