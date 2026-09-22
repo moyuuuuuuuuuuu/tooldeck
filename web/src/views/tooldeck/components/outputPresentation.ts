@@ -25,6 +25,20 @@ export function normalizeOutputType(type?: string): string {
   return outputFormats.some((item) => item.value === value) ? value! : 'json'
 }
 
+// Keep Markdown preview inert; expose only explicit HTTPS Markdown links separately.
+export function markdownExternalLinks(source: string): { label: string; href: string }[] {
+  const links: { label: string; href: string }[] = []
+  for (const match of source.matchAll(/\[([^\]\r\n]{1,120})\]\((https:\/\/[^\s)]+)\)/gi)) {
+    try {
+      const url = new URL(match[2])
+      if (url.protocol !== 'https:' || !url.hostname || url.username || url.password) continue
+      if (!links.some((link) => link.href === url.href)) links.push({ label: match[1], href: url.href })
+    } catch { /* Invalid links remain inert in the preview. */ }
+    if (links.length >= 20) break
+  }
+  return links
+}
+
 // Limit preview size; the full source is always available in the other tab.
 export function csvPreview(source: string): string[][] | null {
   if (source.length > 100000) return null

@@ -18,6 +18,10 @@
         ><p class="hint">静态预览：原始 HTML、外部资源和链接跳转已禁用。</p
         ><div class="preview-scroll"
           ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml" :theme="siteTheme" /></div
+        ><div v-if="externalLinks.length" class="external-links">
+          <span class="hint">外部链接（将在新标签页打开）：</span>
+          <a v-for="link in externalLinks" :key="link.href" :href="link.href" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ link.label }}</a>
+        </div
       ></ElTabPane>
       <ElTabPane label="Markdown 源码" name="source">
         <pre>{{ value }}</pre>
@@ -57,6 +61,7 @@
   import {
     csvPreview,
     htmlPreview,
+    markdownExternalLinks,
     normalizeOutputType,
     outputFormats,
     sanitizeOutputHtml
@@ -78,6 +83,11 @@
   )
   const rows = computed(() =>
     format.value === 'csv' && typeof props.value === 'string' ? csvPreview(props.value) : null
+  )
+  const externalLinks = computed(() =>
+    format.value === 'markdown' && typeof props.value === 'string'
+      ? markdownExternalLinks(props.value)
+      : []
   )
   const tab = ref('preview')
   async function copyOutput() {
@@ -136,6 +146,13 @@
     overflow: auto;
     border-radius: 8px;
     background: var(--el-fill-color-light);
+  }
+  .external-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 8px 0;
   }
   .preview-scroll :deep(.md-editor),
   .preview-scroll :deep(.md-editor-preview),
