@@ -53,7 +53,7 @@
   import { ElMessage } from 'element-plus'
   import { MdPreview } from 'md-editor-v3'
   import 'md-editor-v3/lib/preview.css'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { siteTheme } from '@/hooks/core/useSiteTheme'
   import {
     csvPreview,
     htmlPreview,
@@ -61,9 +61,7 @@
     outputFormats,
     sanitizeOutputHtml
   } from './outputPresentation'
-  const settingStore = useSettingStore()
   const props = defineProps<{ value: unknown; type?: string }>()
-  const siteTheme = computed(() => (settingStore.isDark ? 'dark' : 'light'))
   const format = computed(() => normalizeOutputType(props.type))
   const label = computed(() => outputFormats.find((item) => item.value === format.value)?.label)
   const requiresText = computed(() =>
@@ -139,12 +137,21 @@
     border-radius: 8px;
     background: var(--el-fill-color-light);
   }
-  .preview-scroll :deep(.md-editor-previewOnly) {
+  .preview-scroll :deep(.md-editor),
+  .preview-scroll :deep(.md-editor-preview),
+  .preview-scroll :deep(.github-theme) {
     --md-bk-color: var(--el-fill-color-light);
     --md-color: var(--el-text-color-primary);
+    --md-theme-bg-color: var(--el-fill-color-light);
+    --md-theme-color: var(--el-text-color-primary);
+    --md-theme-table-tr-bg-color: transparent;
+    --md-theme-table-stripe-color: var(--el-fill-color);
+    background-color: var(--el-fill-color-light);
+    color: var(--el-text-color-primary);
   }
   .preview-scroll :deep(.md-editor-preview) {
     padding: 20px 24px;
+    box-sizing: border-box;
   }
   @media (max-width: 600px) {
     .preview-scroll :deep(.md-editor-preview) {
