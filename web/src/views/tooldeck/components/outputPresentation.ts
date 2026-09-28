@@ -25,7 +25,7 @@ export function normalizeOutputType(type?: string): string {
   return outputFormats.some((item) => item.value === value) ? value! : 'json'
 }
 
-// Keep Markdown preview inert; expose only explicit HTTPS Markdown links separately.
+// Extract HTTPS links for callers that need a compact link list.
 export function markdownExternalLinks(source: string): { label: string; href: string }[] {
   const links: { label: string; href: string }[] = []
   for (const match of source.matchAll(/\[([^\]\r\n]{1,120})\]\((https:\/\/[^\s)]+)\)/gi)) {
@@ -93,7 +93,7 @@ export function sanitizeOutputHtml(source: string, allowStyles = false): string 
     )
   )
   if (allowStyles) tags.add('style')
-  const attrs = new Set('alt colspan height lang rowspan title width dir'.split(' '))
+  const attrs = new Set('alt colspan height lang rowspan title width dir href src target rel referrerpolicy'.split(' '))
   if (allowStyles) for (const attr of ['class', 'id', 'style']) attrs.add(attr)
   for (const element of Array.from(template.content.querySelectorAll('*'))) {
     if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !tags.has(element.localName)) {
@@ -101,13 +101,36 @@ export function sanitizeOutputHtml(source: string, allowStyles = false): string 
       continue
     }
     for (const attr of Array.from(element.attributes)) {
-      if (
-        element.localName === 'img' &&
-        attr.name === 'src' &&
-        /^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/i.test(attr.value)
-      )
+      if (attr.name === 'src') {
+        let allowed = element.localName === 'img' && /^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/i.test(attr.value)
+        if (element.localName === 'img' && !allowed) {
+          try {
+            const url = new URL(attr.value)
+            allowed = url.protocol === 'https:' && !!url.hostname && !url.username && !url.password
+          } catch { /* Remove malformed image URLs below. */ }
+        }
+        if (allowed) continue
+        element.removeAttribute(attr.name)
         continue
+      }
+      if (attr.name === 'href') {
+        let allowed = false
+        if (element.localName === 'a') {
+          try {
+            const url = new URL(attr.value)
+            allowed = url.protocol === 'https:' && !!url.hostname && !url.username && !url.password
+          } catch { /* Remove malformed links below. */ }
+        }
+        if (allowed) continue
+        element.removeAttribute(attr.name)
+        continue
+      }
       if (!attrs.has(attr.name)) element.removeAttribute(attr.name)
+    }
+    if (element.localName === 'a' && element.hasAttribute('href')) {
+      element.setAttribute('target', '_blank')
+      element.setAttribute('rel', 'noopener noreferrer')
+      element.setAttribute('referrerpolicy', 'no-referrer')
     }
   }
   return template.innerHTML
@@ -115,7 +138,7 @@ export function sanitizeOutputHtml(source: string, allowStyles = false): string 
 
 export function htmlPreview(source: string): string {
   return (
-    "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'\"><style>body{font:14px/1.6 system-ui,sans-serif;padding:16px;overflow-wrap:anywhere;color:#222;background:#fff}img{max-width:100%;height:auto}table{border-collapse:collapse}td,th{padding:8px;border:1px solid #ddd}</style></head><body>" +
+    "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; base-uri 'none'; form-action 'none'\"><style>body{font:14px/1.6 system-ui,sans-serif;padding:16px;overflow-wrap:anywhere;color:#222;background:#fff}img{max-width:100%;height:auto}table{border-collapse:collapse}td,th{padding:8px;border:1px solid #ddd}</style></head><body>" +
     sanitizeOutputHtml(source, true) +
     '</body></html>'
   )

@@ -6,8 +6,8 @@
     </div>
     <ElTabs v-if="format === 'html' && typeof value === 'string'" v-model="tab">
       <ElTabPane label="页面预览" name="preview"
-        ><p class="hint">静态预览：脚本、表单、外部资源和链接跳转已禁用。</p
-        ><iframe title="工具 HTML 结果预览" sandbox="" referrerpolicy="no-referrer" :srcdoc="html"
+        ><p class="hint">静态预览：允许 HTTPS 图片和链接；脚本、表单及其他外部资源仍被禁用。</p
+        ><iframe title="工具 HTML 结果预览" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" :srcdoc="html"
       /></ElTabPane>
       <ElTabPane label="HTML 源码" name="source">
         <pre>{{ value }}</pre>
@@ -15,13 +15,9 @@
     </ElTabs>
     <ElTabs v-else-if="format === 'markdown' && typeof value === 'string'" v-model="tab">
       <ElTabPane label="页面预览" name="preview"
-        ><p class="hint">静态预览：原始 HTML、外部资源和链接跳转已禁用。</p
+        ><p class="hint">静态预览：允许所有 HTTPS 图片和链接；脚本、表单及非 HTTPS 资源仍被过滤。</p
         ><div class="preview-scroll"
           ><MdPreview :model-value="value" :sanitize="sanitizeOutputHtml" :theme="siteTheme" /></div
-        ><div v-if="externalLinks.length" class="external-links">
-          <span class="hint">外部链接（将在新标签页打开）：</span>
-          <a v-for="link in externalLinks" :key="link.href" :href="link.href" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ link.label }}</a>
-        </div
       ></ElTabPane>
       <ElTabPane label="Markdown 源码" name="source">
         <pre>{{ value }}</pre>
@@ -61,7 +57,6 @@
   import {
     csvPreview,
     htmlPreview,
-    markdownExternalLinks,
     normalizeOutputType,
     outputFormats,
     sanitizeOutputHtml
@@ -83,11 +78,6 @@
   )
   const rows = computed(() =>
     format.value === 'csv' && typeof props.value === 'string' ? csvPreview(props.value) : null
-  )
-  const externalLinks = computed(() =>
-    format.value === 'markdown' && typeof props.value === 'string'
-      ? markdownExternalLinks(props.value)
-      : []
   )
   const tab = ref('preview')
   async function copyOutput() {
@@ -146,13 +136,6 @@
     overflow: auto;
     border-radius: 8px;
     background: var(--el-fill-color-light);
-  }
-  .external-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-    margin: 8px 0;
   }
   .preview-scroll :deep(.md-editor),
   .preview-scroll :deep(.md-editor-preview),
