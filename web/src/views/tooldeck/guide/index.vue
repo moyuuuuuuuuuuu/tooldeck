@@ -90,14 +90,14 @@ my-tool.zip
                     >执行模式：同步直接等待结果；异步 API 调用必须传入
                     callback_url，由平台完成后回调。</li
                   ><li
-                    >允许 API 调用：开启后可使用本人 API Key / OAuth；关闭后仅限网页使用。</li
+                    >允许 API / MCP 调用：开启后可使用本人 API Key / OAuth；关闭后仅限网页使用。</li
                   ></ul
                 ><p
                   >公开工具默认需管理员审核，通过后所有登录用户可见；私有工具不需要审核，仅本人和管理员可见。同名工具不能被他人接管。ZIP
                   最大64 MB，展开后128 MB、最多2000个条目。执行时限1–900秒，内存64–2048 MB。</p
                 ></section
               ><section id="step-5"
-                ><div class="step-label">STEP 06</div><h2>API 调用概览</h2
+                ><div class="step-label">STEP 06</div><h2>API / MCP 调用概览</h2
                 ><p
                   >工具详情的“API 参数”页提供当前工具的请求地址与参数说明。先在“访问凭证”创建
                   Key。文件需先 POST /api/v1/files（multipart file 字段），再把返回的 file_id 放入
@@ -107,6 +107,10 @@ my-tool.zip
                   3、30、300、3000、300000
                   秒重试，全部失败后才产生站内信，不发送完成邮件。重试提交时使用相同
                   Idempotency-Key，避免重复执行。</p
+                ><p
+                  >MCP 地址为 /mcp，与 API 共用同一个
+                  Key。客户端可自动发现工具、提交任务、查询结果及取消；异步 MCP
+                  默认查询结果，无需回调地址。完整配置见本指南的“MCP 接入”章节。</p
                 ></section
               ><section id="step-6"
                 ><div class="step-label">STEP 07</div><h2>构建环境与日志</h2
@@ -181,7 +185,7 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
               ><section id="step-10"
                 ><div class="step-label">STREAMING</div><h2>SSE 流式输出</h2
                 ><StreamGuide /></section></main></div></div></ElTabPane
-      ><ElTabPane label="API 指南" name="api"
+      ><ElTabPane label="API / MCP 指南" name="api"
         ><div class="tab-content"><ApiGuide /></div></ElTabPane></ElTabs
   ></article>
 </template>
@@ -208,7 +212,7 @@ Go: os.Getenv("IMAGE_API_KEY")</pre
     '图片和文件',
     '第三方服务与依赖',
     '上传选项',
-    'API 调用概览',
+    'API / MCP 调用概览',
     '构建环境与日志',
     '环境变量与凭证',
     '异步任务取消钩子',

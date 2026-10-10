@@ -171,7 +171,7 @@
           '根目录包含 tooldeck.json；ZIP 最大 64 MB，展开后最多 128 MB / 2000 个条目。'
         ],
         ['public', '接口默认 true', '公开时按站点设置审核；私有无需审核，仅本人和管理员可见。'],
-        ['api_enabled', '接口默认 true', '是否允许 API Key / OAuth 调用，关闭后仅允许网页执行。'],
+        ['api_enabled', '接口默认 true', '是否允许 API / MCP 使用 API Key / OAuth 调用，关闭后仅允许网页执行。'],
         ['third_party', '省略时保留包内设置', '覆盖 network.enabled；关闭时清空域名列表。'],
         ['allowed_hosts', '可选', '覆盖允许域名列表，上传字段使用逗号、空格或换行分隔。'],
         [

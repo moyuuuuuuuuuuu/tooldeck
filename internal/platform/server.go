@@ -178,9 +178,14 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 	return nil
 }
 func (s *Server) Handler() http.Handler {
+	mcpHandler := s.mcpHandler()
 	return s.auditMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
+		if r.URL.Path == "/mcp" {
+			mcpHandler.ServeHTTP(w, r)
+			return
+		}
 		if r.URL.Path == "/healthz" {
 			jsonResponse(w, 200, map[string]string{"status": "ok"})
 			return
@@ -627,6 +632,12 @@ func (s *Server) canReadRun(p Principal, r Run) bool {
 	return p.Admin || r.Owner == p.owner() && p.allows(s.store.State.Tools[r.ToolID].Manifest.Name)
 }
 func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, id string) {
+	s.createRunForTransport(w, r, p, id, false)
+}
+
+// MCP submits durable jobs immediately; callers poll using tooldeck_get_run.
+// The transport flag is internal and cannot be selected through an API body.
+func (s *Server) createRunForTransport(w http.ResponseWriter, r *http.Request, p Principal, id string, mcpCall bool) {
 	var b struct {
 		Input          map[string]any    `json:"input"`
 		Env            map[string]string `json:"env"`
@@ -651,21 +662,28 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		fail(w, 404, "tool unavailable")
 		return
 	}
-	apiAsync := !p.Session && !p.Guest && t.Manifest.Execution.Mode == "async"
-	if !p.Session && !p.Guest && t.APIEnabled != nil && !*t.APIEnabled {
+	apiAsync := (mcpCall || !p.Session && !p.Guest) && t.Manifest.Execution.Mode == "async"
+	if (mcpCall || !p.Session && !p.Guest) && t.APIEnabled != nil && !*t.APIEnabled {
 		s.store.Unlock()
-		fail(w, 403, "此工具未开放 API 调用，请在网页中使用")
+		fail(w, 403, "此工具未开放 API / MCP 调用，请在网页中使用")
 		return
 	}
 	if apiAsync {
-		if e := validateCallbackURL(b.CallbackURL); e != nil {
-			s.store.Unlock()
-			fail(w, 422, e)
-			return
+		if !mcpCall || b.CallbackURL != "" {
+			if e := validateCallbackURL(b.CallbackURL); e != nil {
+				s.store.Unlock()
+				fail(w, 422, e)
+				return
+			}
 		}
 		if len(b.CallbackSecret) > 512 || strings.ContainsRune(b.CallbackSecret, 0) {
 			s.store.Unlock()
 			fail(w, 422, "callback_secret 最多512字节且不能包含空字符")
+			return
+		}
+		if b.CallbackSecret != "" && b.CallbackURL == "" {
+			s.store.Unlock()
+			fail(w, 422, "callback_secret requires callback_url")
 			return
 		}
 	} else if b.CallbackURL != "" || b.CallbackSecret != "" {
@@ -764,7 +782,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			return
 		}
 	} else {
-		if p.Session || p.Guest {
+		if !mcpCall && (p.Session || p.Guest) {
 			if active := s.activeBrowserRun(p.owner(), t); active != nil {
 				s.store.Unlock()
 				fail(w, 409, "网页端此工具已有运行中的任务，请等待完成后再试")
@@ -789,6 +807,9 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 			source = "guest"
 		} else if strings.HasPrefix(p.ID, "oauth:") {
 			source = "oauth"
+		}
+		if mcpCall {
+			source = "mcp"
 		}
 		run = Run{ID: ID("run_"), ToolID: id, OutputType: runOutputType(t.Manifest), Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
 		encryptedEnv := map[string]string{}
@@ -832,11 +853,11 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 		}
 	}
 	s.store.Unlock()
-	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+	if !mcpCall && strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
 		s.streamRun(w, r, p, run.ID)
 		return
 	}
-	if t.Manifest.Execution.Mode == "sync" && !t.Manifest.Execution.Stream {
+	if !mcpCall && t.Manifest.Execution.Mode == "sync" && !t.Manifest.Execution.Stream {
 		timer := time.NewTimer(20 * time.Second)
 		defer timer.Stop()
 		ticker := time.NewTicker(100 * time.Millisecond)
@@ -862,7 +883,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request, p Principal, 
 	if runActive(run.Status) {
 		code = 202
 	}
-	jsonResponse(w, code, run)
+	runResponse(w, r, code, run)
 }
 func (s *Server) validateFileInput(sc Schema, v any, owner string, ui map[string]UI, field string) error {
 	if sc.Format == "tooldeck-file" {
@@ -921,12 +942,12 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 			}
 			_ = s.store.save()
 			s.store.Unlock()
-			jsonResponse(w, 200, run)
+			runResponse(w, r, 200, run)
 			return
 		}
 		if run.Status != "running" {
 			s.store.Unlock()
-			jsonResponse(w, 200, run)
+			runResponse(w, r, 200, run)
 			return
 		}
 		tool := s.store.State.Tools[run.ToolID]
@@ -946,7 +967,7 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 			}
 			_ = s.store.save()
 			s.store.Unlock()
-			jsonResponse(w, 200, run)
+			runResponse(w, r, 200, run)
 			return
 		}
 		if tool.Manifest.Execution.CancelHook {
@@ -971,7 +992,7 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 		run = current
 		s.store.Unlock()
 		cancelExecution()
-		jsonResponse(w, 200, run)
+		runResponse(w, r, 200, run)
 		return
 	}
 	s.store.Unlock()
@@ -980,7 +1001,7 @@ func (s *Server) runEndpoint(w http.ResponseWriter, r *http.Request, p Principal
 		return
 	}
 	if len(parts) == 2 {
-		jsonResponse(w, 200, run)
+		runResponse(w, r, 200, run)
 	} else if len(parts) == 3 && parts[2] == "logs" {
 		jsonResponse(w, 200, map[string]string{"logs": run.Logs})
 	} else {

@@ -1,6 +1,6 @@
 <template>
   <div
-    ><div class="heading tooldeck-page-hero"><div><span class="page-eyebrow">RUN HISTORY</span><h1>运行记录</h1><p>查看网页与 API 调用产生的任务状态和运行结果。</p></div><ElButton @click="load">刷新</ElButton></div
+    ><div class="heading tooldeck-page-hero"><div><span class="page-eyebrow">RUN HISTORY</span><h1>运行记录</h1><p>查看网页、API 与 MCP 调用产生的任务状态和运行结果。</p></div><ElButton @click="load">刷新</ElButton></div
     ><ElTable :data="runs" v-loading="loading" @row-click="select"
       ><ElTableColumn prop="run_id" label="任务" min-width="240" /><ElTableColumn
         label="调用方式"
@@ -58,6 +58,7 @@
     web: '网页调用',
     api_key: 'API Key',
     oauth: 'OAuth',
+    mcp: 'MCP',
     guest: '匿名调用'
   }
   async function load() {

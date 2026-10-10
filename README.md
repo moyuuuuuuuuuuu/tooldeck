@@ -9,7 +9,7 @@
 - **工具库**：源码上传、版本管理、自动安装依赖与构建、公开审核和私有工具。
 - **网页运行**：根据工具声明生成文本、数字、选项、JSON、图片及文件表单，展示结果、日志和产物。
 - **在线运行**：单文件代码编辑、语法高亮、版本选择、标准输入、输出、停止运行与代码下载。
-- **API 接入**：个人 API Key、长期有效 Key、所有工具通用授权，以及外部 OAuth 令牌验证。
+- **API / MCP 接入**：REST API 和 `/mcp` 共用个人 API Key、长期有效 Key、所有工具通用授权及外部 OAuth 令牌验证。
 - **账号与个人中心**：邮箱验证码注册、登录、默认字母头像、资料维护、密码修改和个人使用统计。
 - **环境变量**：工具个人配置、账号统一配置和作者共享配置；值加密保存，不回显。
 - **异步任务**：请求级 HTTPS 回调、签名校验、失败重试、状态查询与取消。
@@ -109,7 +109,7 @@ python scripts/package-examples.py
 
 第三方 HTTP(S) 请求需声明精确公网域名，通过受限代理访问，仅开放 80/443 端口，不支持内网目标、通配域名或任意 TCP/UDP。客户端需遵循 `HTTP_PROXY` / `HTTPS_PROXY`。Fake-IP 网络可配置 `TOOLDECK_EGRESS_DOH`。
 
-## API 接入
+## API / MCP 接入
 
 在“API 接入”创建个人 Key，可指定工具及 1–365 天有效期，也可选择长期有效、所有工具通用（含以后新增工具）。长期 Key 撤销前有效；通用授权仍遵守工具可见性与 API 开关。
 
@@ -147,6 +147,16 @@ curl -X POST 'https://你的域名/api/v1/runs/RUN_ID/cancel' \
 工具详情提供 PHP、Java、Python、Go 调用示例。上传、账号配置与授权管理使用登录会话，执行 Key 不具备这些管理权限。
 
 OAuth 使用外部 RFC 7662 introspection 服务，平台不提供授权服务器。配置 `.env.example` 中的 URL、客户端凭证和 audience，调用方携带 `Authorization: Bearer TOKEN`；scope 使用 `tool:工具名` 或 `tool:*`。
+
+### MCP
+
+远程 MCP 地址为 `https://你的域名/mcp`（本地 `http://localhost:18088/mcp`），采用无会话 Streamable HTTP。直接使用同一个 API Key，通过 `Authorization: Bearer YOUR_API_KEY` 或 `X-API-Key` 传递；工具范围、有效期、撤销、可见性和 API 开关继续生效。
+
+客户端通过 `tools/list` 自动发现 `tooldeck_run_{tool_id}`，使用 `tools/call` 提交；所有 MCP 提交立即返回 `run_id`，通过 `tooldeck_get_run` 查询、`tooldeck_cancel_run` 取消。异步 MCP 无需回调服务器；REST 异步仍要求 `callback_url`。任务、环境配置、文件和幂等索引与 API 共用，运行记录标记来源为 MCP。
+
+查询默认返回任务摘要和不超过 16 KiB 的结果；完整结果和日志使用 `tooldeck_read_run_output` 分页读取。发布新版本或调整授权后需重新执行 `tools/list`，服务不发送列表变更通知。
+
+完整配置、参数和 HTTP 示例见 [MCP 接入文档](docs/mcp.md)，站内“API / MCP 调用指南”也提供接入说明。
 
 ## 邮箱注册与找回密码
 

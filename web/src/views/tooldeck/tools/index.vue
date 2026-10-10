@@ -189,7 +189,7 @@
         >工具需按协议发送增量事件；网页实时显示，API 可订阅 SSE。与完成通知独立。</p
       >
       <div style="margin-bottom: 18px"
-        ><ElCheckbox v-model="apiEnabled">允许 API 调用</ElCheckbox></div
+        ><ElCheckbox v-model="apiEnabled">允许 API / MCP 调用</ElCheckbox></div
       >
       <ElSelect
         v-model="uploadMode"

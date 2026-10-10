@@ -2,15 +2,17 @@
   <div class="api-guide">
     <header v-if="!embedded" class="tooldeck-page-hero"
       ><div
-        ><span class="eyebrow">TOOLDECK API</span><h1>API 调用指南</h1
-        ><p>完成工具发现、任务提交、异步结果回调和文件产物下载的通用接入说明。</p></div
+        ><span class="eyebrow">TOOLDECK API / MCP</span><h1>API / MCP 调用指南</h1
+        ><p
+          >通过 REST API 或 MCP 发现工具、提交任务、查询结果和下载产物，两种方式共用 API Key。</p
+        ></div
       ><ElButton type="primary" @click="router.push('/tooldeck/credentials')"
         >管理 API Key</ElButton
       ></header
     >
     <main>
       <aside
-        ><span class="nav-label">API 接入</span
+        ><span class="nav-label">API / MCP 接入</span
         ><a v-for="(item, i) in sections" :key="item.id" :href="'#' + item.id"
           ><small>{{ String(i + 1).padStart(2, '0') }}</small
           >{{ item.title }}</a
@@ -19,7 +21,9 @@
       <article>
         <section id="auth"
           ><h2>1. 身份认证</h2
-          ><p>在“访问凭证”创建 API Key，并通过请求头传递。不要把 Key 放入 URL、源码或浏览器前端。</p
+          ><p
+            >在“访问凭证”创建 API Key，REST API 和 MCP 可以共用同一个 Key，通过请求头传递。不要把
+            Key 放入 URL、源码或浏览器前端。</p
           ><pre>{{ authHeaders }}</pre
           ><p
             >OAuth 使用 <code>Authorization: Bearer TOKEN</code>，授权范围为
@@ -99,6 +103,58 @@
             ><li>429：队列已满或触发频率限制</li></ul
           ><p>env 不会出现在响应、调用记录或执行日志中；异步任务所需临时值会加密保存。</p></section
         >
+        <section id="mcp">
+          <h2>9. MCP 接入</h2>
+          <p>
+            MCP 地址为 <code>https://你的域名/mcp</code>，本地为
+            <code>http://localhost:18088/mcp</code>。采用无会话 Streamable HTTP，支持远程 HTTP
+            和自定义请求头的客户端可参考以下配置，字段名以客户端文档为准：
+          </p>
+          <pre>{{ mcpConfig }}</pre>
+          <p>
+            直接使用现有 API Key，可通过 <code>Authorization: Bearer YOUR_API_KEY</code> 或
+            <code>X-API-Key</code> 传递。工具授权、有效期、撤销、可见性及“允许 API / MCP
+            调用”开关同时生效。OAuth 复用平台已配置的令牌验证，不提供自动发现登录流程。
+          </p>
+          <p>
+            客户端通过 <code>tools/list</code> 发现当前可调用版本和参数，通过
+            <code>tools/call</code> 调用返回的 <code>tooldeck_run_{tool_id}</code>。 所有 MCP
+            提交立即返回任务，使用 <code>tooldeck_get_run</code> 查询结果，
+            <code>tooldeck_cancel_run</code> 取消任务。
+          </p>
+          <pre>{{ mcpCalls }}</pre>
+          <p>
+            结果中的 <code>structuredContent</code> 是精简任务摘要，包含 run_id、status、小结果和
+            artifacts，不包含 input、logs 或 stream_events。queued、running、canceling
+            表示尚未结束，查询应间隔数秒；HTTP 200 不代表任务执行成功。参数或权限失败会返回
+            <code>isError: true</code>。
+          </p>
+          <p>
+            完成任务的结果 JSON 不超过 16 KiB 时直接返回；更大时会标记
+            <code>result_truncated: true</code> 并提供 result_bytes。 用
+            <code>tooldeck_read_run_output</code> 分页读取，section 为 result 或 logs， offset 从 0
+            起按 Unicode 字符计数，limit 默认 2048、最多 4096。 按 next_offset 继续，直到 has_more
+            为 false，拼接 text 可还原完整输出。 产物摘要最多 16 条，完整记录通过 details_url
+            和同一个 Key 获取。
+          </p>
+          <p>
+            初始化、ping、发现、查询和分页不会写入操作审计；创建与取消保留审计。
+            服务不发送工具列表变更通知，发布新版本或调整授权后需重新执行 tools/list，
+            客户端无法刷新缓存时重新连接。
+          </p>
+          <p>
+            异步 MCP 默认查询结果，无需提供 callback_url；也可传入公网 HTTPS 回调地址。 原 REST 异步
+            API 仍要求 callback_url。env 使用 Key 所属用户的个人配置， idempotency_key 与 REST 的
+            Idempotency-Key 共用幂等记录。
+          </p>
+          <p>
+            文件仍通过上述 REST 接口上传和下载，使用同一个 Key；运行记录来源标记为 MCP。 断开 MCP
+            连接不会取消任务。实时 delta 使用 REST SSE 接口，当前 MCP 不提供实时订阅。 手工 POST
+            时设置 Content-Type: application/json、Accept: application/json,
+            text/event-stream，初始化后携带协商的 MCP-Protocol-Version。 无需
+            Mcp-Session-Id，GET/DELETE 返回 405。
+          </p>
+        </section>
       </article>
     </main>
   </div>
@@ -116,9 +172,24 @@
     { id: 'files', title: '文件接口' },
     { id: 'retry', title: '安全重试' },
     { id: 'example', title: '完整示例' },
-    { id: 'errors', title: '状态码' }
+    { id: 'errors', title: '状态码' },
+    { id: 'mcp', title: 'MCP 接入' }
   ]
   const authHeaders = `X-API-Key: YOUR_API_KEY\nContent-Type: application/json`
+  const mcpConfig = JSON.stringify(
+    {
+      mcpServers: {
+        tooldeck: {
+          type: 'http',
+          url: 'https://你的域名/mcp',
+          headers: { Authorization: 'Bearer YOUR_API_KEY' }
+        }
+      }
+    },
+    null,
+    2
+  )
+  const mcpCalls = `// 提交：使用 tools/list 返回的实际工具名\n{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"tooldeck_run_TOOL_ID","arguments":{"input":{"text":"hello"},"idempotency_key":"YOUR_UNIQUE_REQUEST_ID"}}}\n\n// 查询：使用任务返回的实际 run_id\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"tooldeck_get_run","arguments":{"run_id":"RUN_ID"}}}\n\n// 取消\n{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"tooldeck_cancel_run","arguments":{"run_id":"RUN_ID"}}}`
   const requestBody = `{\n  "input": { "text": "hello" },\n  "env": { "API_KEY": "仅本次使用的值" },\n  "callback_url": "https://example.com/tooldeck/callback",\n  "callback_secret": "用于HMAC-SHA256验签的密钥"\n}`
   const callbackBody = `{\n  "event": "tool.run.completed",\n  "run_id": "run_xxx",\n  "tool_id": "tool_xxx",\n  "status": "succeeded",\n  "result": { "result": "..." },\n  "artifacts": [],\n  "created_at": "...",\n  "started_at": "...",\n  "duration_ms": 1200\n}`
   const fileUpload = `POST /api/v1/files\nContent-Type: multipart/form-data\nfile=@/path/to/input.png`

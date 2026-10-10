@@ -59,6 +59,8 @@ func (w *statusWriter) Flush() {
 }
 func (s *Server) auditMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// MCP audits actual mutations through its internal API adapter. Its POST
+		// transport also carries reads, pings and initialization notifications.
 		if r.Method == "GET" || r.Method == "HEAD" || !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
 			return
