@@ -2,7 +2,15 @@
   <div class="run-page" v-loading="loading">
     <template v-if="tool">
       <header
-        ><ElButton text @click="router.push('/tooldeck/tools')">← 返回工具列表</ElButton
+        ><ElButton
+          text
+          @click="
+            router.push({
+              path: user.isLogin ? '/tooldeck/tools' : '/explore',
+              query: { q: route.query.q, runtime: route.query.runtime }
+            })
+          "
+          >← 返回工具列表</ElButton
         ><div class="tool-heading"
           ><div
             ><span class="eyebrow"
@@ -36,6 +44,7 @@
           <DynamicField
             v-for="[name, field] in orderedFields"
             :key="tool.id + name"
+            :data-field="name"
             :label="String(name)"
             :schema="field"
             :ui="tool.manifest.ui_schema?.[name] || {}"
@@ -56,7 +65,10 @@
               size="large"
               :loading="running"
               :disabled="
-                running || uploading > 0 || pending || (!!tool.build_status && tool.build_status !== 'ready')
+                running ||
+                uploading > 0 ||
+                pending ||
+                (!!tool.build_status && tool.build_status !== 'ready')
               "
               @click="execute"
               >{{ pending ? '请等待当前运行结束' : '运行工具' }}</ElButton
@@ -138,7 +150,14 @@
       title="工具不可用"
       sub-title="工具不存在、尚未公开或当前账号无权访问"
       ><template #extra
-        ><ElButton type="primary" @click="router.push('/tooldeck/tools')"
+        ><ElButton
+          type="primary"
+          @click="
+            router.push({
+              path: user.isLogin ? '/tooldeck/tools' : '/explore',
+              query: { q: route.query.q, runtime: route.query.runtime }
+            })
+          "
           >返回工具列表</ElButton
         ></template
       ></ElResult
@@ -153,6 +172,7 @@
   import { td, type Field, type Run, type Tool } from '@/api/tooldeck'
   import DynamicField from '../components/DynamicField.vue'
   import RunResult from '../components/RunResult.vue'
+  import { validateToolInput } from '../components/inputValidation'
   import ToolEnvironment from '../components/ToolEnvironment.vue'
   defineOptions({ name: 'ToolRun' })
   const route = useRoute(),
@@ -173,7 +193,9 @@
         (tool.value?.manifest.ui_schema?.[b]?.order ?? 0)
     )
   )
-  const pending = computed(() => ['queued', 'running', 'canceling'].includes(result.value?.status || ''))
+  const pending = computed(() =>
+    ['queued', 'running', 'canceling'].includes(result.value?.status || '')
+  )
   const owner = computed(
     () => user.info.roles?.includes('R_SUPER') || tool.value?.owner === String(user.info.id)
   )
@@ -259,6 +281,14 @@
       await router.push({ path: '/auth/login', query: { redirect: route.fullPath } })
       return
     }
+    const issue = validateToolInput(tool.value.manifest.input_schema, input.value)
+    if (issue) {
+      ElMessage.warning(issue.message)
+      const field = document.querySelector(`[data-field="${CSS.escape(issue.path)}"]`)
+      field?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      ;(field?.querySelector('input, textarea, button') as HTMLElement | null)?.focus()
+      return
+    }
     running.value = true
     stopPoll()
     try {
@@ -296,7 +326,10 @@
       loading.value = false
     }
   })
-  onBeforeUnmount(() => { live = false; stopPoll() })
+  onBeforeUnmount(() => {
+    live = false
+    stopPoll()
+  })
 </script>
 <style scoped>
   .run-page {

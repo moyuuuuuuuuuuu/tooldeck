@@ -11,4 +11,4 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 COPY runtimes/build.sh /build.sh
 RUN chmod 755 /build.sh
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+COPY --from=composer/composer:2-bin /composer /usr/local/bin/composer

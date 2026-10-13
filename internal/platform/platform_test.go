@@ -248,3 +248,22 @@ func TestCancelHookFailureIsVisible(t *testing.T) {
 		t.Fatalf("cancel failure was hidden: code=%d run=%+v", w.Code, run)
 	}
 }
+
+func TestURLCodecRejectsEmptyText(t *testing.T) {
+	data, err := os.ReadFile("../../examples/url-codec/tooldeck.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	if err = json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	input := map[string]any{"operation": "编码", "mode": "标准编码（空格转 %20）", "text": ""}
+	if validateInput(manifest.Input, input, "input") == nil {
+		t.Fatal("empty URL text accepted")
+	}
+	input["text"] = "你好 + /"
+	if err = validateInput(manifest.Input, input, "input"); err != nil {
+		t.Fatal(err)
+	}
+}

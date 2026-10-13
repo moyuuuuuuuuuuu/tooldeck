@@ -2,39 +2,146 @@ import request from '@/utils/http'
 import { useUserStore } from '@/store/modules/user'
 
 export interface Field {
-  type: string; title?: string; description?: string; format?: string; properties?: Record<string, Field>
-  items?: Field; required?: string[]; enum?: any[]; default?: any; minimum?: number; maximum?: number
-  minLength?: number; maxLength?: number; minItems?: number; maxItems?: number
+  type: string
+  title?: string
+  description?: string
+  format?: string
+  properties?: Record<string, Field>
+  items?: Field
+  required?: string[]
+  enum?: any[]
+  default?: any
+  minimum?: number
+  maximum?: number
+  minLength?: number
+  maxLength?: number
+  minItems?: number
+  maxItems?: number
 }
 export interface Tool {
- default_version?:boolean;canary_percent?:number;
- build_status?:string;build_log?:string;build_error?:string;
- withdrawn?:boolean; created_at?:string; public?:boolean; review_status?:string;review_note?:string;api_enabled?: boolean; owner?:string
- author?:{id:string;username:string;nickname:string;email:string;email_verified:boolean;bio:string;created_at:string}
+  default_version?: boolean
+  canary_percent?: number
+  build_status?: string
+  build_log?: string
+  build_error?: string
+  build_failure_stage?: string
+  withdrawn?: boolean
+  created_at?: string
+  public?: boolean
+  review_status?: string
+  review_note?: string
+  api_enabled?: boolean
+  owner?: string
+  author?: {
+    id: string
+    username: string
+    nickname: string
+    email: string
+    email_verified: boolean
+    bio: string
+    created_at: string
+  }
   id: string
-  manifest: { env?: {name:string;description?:string;required?:boolean;sensitive?:boolean}[]; runtime_version?:string;name: string; title: string; version: string; description: string; runtime: string
-    execution: {stream?:boolean;cancel_hook?:boolean;mode: string; timeout_seconds: number; memory_mb: number}
-    input_schema: Field; ui_schema: Record<string, any>; output_schema: {type: string}
-    network: {enabled: boolean; allowed_hosts: string[]}; secrets: string[] }
+  manifest: {
+    env?: { name: string; description?: string; required?: boolean; sensitive?: boolean }[]
+    runtime_version?: string
+    name: string
+    title: string
+    version: string
+    description: string
+    runtime: string
+    execution: {
+      stream?: boolean
+      cancel_hook?: boolean
+      mode: string
+      timeout_seconds: number
+      memory_mb: number
+    }
+    input_schema: Field
+    ui_schema: Record<string, any>
+    output_schema: { type: string }
+    network: { enabled: boolean; allowed_hosts: string[] }
+    secrets: string[]
+  }
 }
-export interface Artifact { file_id: string; name: string; mime: string; size: number; expires_at?: string; downloads_remaining?: number }
-export interface Run { output_type?: string; run_id: string; tool_id: string; status: string; source?: 'web'|'api_key'|'oauth'|'guest'; env_overridden?: boolean; callback_url?: string; callback_attempts?: number; callback_sent?: boolean; callback_failed?: boolean; callback_error?: string; input: Record<string, any>; result: any; error?: string; cancel_error?: string; logs: string; duration_ms: number; artifacts: Artifact[]; created_at: string }
-export interface RunPage { items: Run[]; total: number; page: number; page_size: number }
-export const toolApiPrefix = () => useUserStore().isLogin ? '/v1' : '/public'
+export interface Artifact {
+  file_id: string
+  name: string
+  mime: string
+  size: number
+  expires_at?: string
+  downloads_remaining?: number
+}
+export interface Run {
+  tool_title?: string
+  output_type?: string
+  run_id: string
+  tool_id: string
+  status: string
+  source?: 'web' | 'api_key' | 'oauth' | 'guest'
+  env_overridden?: boolean
+  callback_url?: string
+  callback_attempts?: number
+  callback_sent?: boolean
+  callback_failed?: boolean
+  callback_error?: string
+  input: Record<string, any>
+  result: any
+  error?: string
+  cancel_error?: string
+  logs: string
+  duration_ms: number
+  artifacts: Artifact[]
+  created_at: string
+}
+export interface RunPage {
+  items: Run[]
+  total: number
+  page: number
+  page_size: number
+}
+export const toolApiPrefix = () => (useUserStore().isLogin ? '/v1' : '/public')
 export const td = {
- get: <T>(kind: string) => request.get<T>({url: `/v1/${kind}`}),
-  tools: () => request.get<Tool[]>({url: `${toolApiPrefix()}/tools`}),
-  runs: (page = 1, pageSize = 20) => request.get<RunPage>({url: `/v1/runs?mine=1&page=${page}&page_size=${pageSize}`}),
-  run: (id: string) => request.get<Run>({url: `${toolApiPrefix()}/runs/${id}`}),
-  activeRun: (id: string) => request.get<Run | null>({url: `${toolApiPrefix()}/tools/${id}/active-run`}),
-  execute: (id: string, input: any) => request.post<Run>({url: `${toolApiPrefix()}/tools/${id}/runs`, data: {input}, timeout: 25000, headers: {'Idempotency-Key': Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('')}}),
-  cancel: (id: string) => request.post<Run>({url: `${toolApiPrefix()}/runs/${id}/cancel`}),
-  upload: (file: File, kind = 'files', mode = '', options: Record<string,string> = {}) => {const data = new FormData(); data.append('file', file); if (mode) data.append('mode',mode); for(const [key,value] of Object.entries(options))data.append(key,value); return request.post<any>({url: `${kind==='files'?toolApiPrefix():'/v1'}/${kind}`, data, timeout: 120000})},
-  list: (kind: string) => request.get<any[]>({url: `/v1/${kind}`}),
-  save: (kind: string, data: any) => request.post<any>({url: `/v1/${kind}`, data}),
-  remove: (kind: string, id: string) => request.del({url: `/v1/${kind}/${encodeURIComponent(id)}`}),
+  get: <T>(kind: string) => request.get<T>({ url: `/v1/${kind}` }),
+  tools: () => request.get<Tool[]>({ url: `${toolApiPrefix()}/tools` }),
+  runs: (page = 1, pageSize = 20, status = '') =>
+    request.get<RunPage>({
+      url: `/v1/runs?mine=1&page=${page}&page_size=${pageSize}&status=${encodeURIComponent(status)}`
+    }),
+  run: (id: string) => request.get<Run>({ url: `${toolApiPrefix()}/runs/${id}` }),
+  activeRun: (id: string) =>
+    request.get<Run | null>({ url: `${toolApiPrefix()}/tools/${id}/active-run` }),
+  execute: (id: string, input: any) =>
+    request.post<Run>({
+      url: `${toolApiPrefix()}/tools/${id}/runs`,
+      data: { input },
+      timeout: 25000,
+      headers: {
+        'Idempotency-Key': Array.from(crypto.getRandomValues(new Uint8Array(16)), (v) =>
+          v.toString(16).padStart(2, '0')
+        ).join('')
+      }
+    }),
+  cancel: (id: string) => request.post<Run>({ url: `${toolApiPrefix()}/runs/${id}/cancel` }),
+  upload: (file: File, kind = 'files', mode = '', options: Record<string, string> = {}) => {
+    const data = new FormData()
+    data.append('file', file)
+    if (mode) data.append('mode', mode)
+    for (const [key, value] of Object.entries(options)) data.append(key, value)
+    return request.post<any>({
+      url: `${kind === 'files' ? toolApiPrefix() : '/v1'}/${kind}`,
+      data,
+      timeout: 120000
+    })
+  },
+  list: (kind: string) => request.get<any[]>({ url: `/v1/${kind}` }),
+  save: (kind: string, data: any) => request.post<any>({ url: `/v1/${kind}`, data }),
+  remove: (kind: string, id: string) =>
+    request.del({ url: `/v1/${kind}/${encodeURIComponent(id)}` }),
   blob: async (id: string) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${toolApiPrefix()}/files/${id}`, {headers: {Authorization: `Bearer ${useUserStore().accessToken}`}})
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${toolApiPrefix()}/files/${id}`, {
+      headers: { Authorization: `Bearer ${useUserStore().accessToken}` }
+    })
     if (!response.ok) throw new Error('文件读取失败或授权已过期')
     return response.blob()
   }

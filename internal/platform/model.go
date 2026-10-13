@@ -72,26 +72,27 @@ type Manifest struct {
 	} `json:"output_schema"`
 }
 type Tool struct {
-	StoredBytes    int64       `json:"stored_bytes,omitempty"`
-	ArtifactBytes  int64       `json:"artifact_bytes,omitempty"`
-	DefaultVersion bool        `json:"default_version,omitempty"`
-	CanaryPercent  int         `json:"canary_percent,omitempty"`
-	Withdrawn      bool        `json:"withdrawn,omitempty"`
-	Playground     bool        `json:"playground,omitempty"`
-	BuildStatus    string      `json:"build_status,omitempty"`
-	BuildLog       string      `json:"build_log,omitempty"`
-	BuildError     string      `json:"build_error,omitempty"`
-	BuildImage     string      `json:"build_image,omitempty"`
-	Artifact       string      `json:"artifact,omitempty"`
-	Public         *bool       `json:"public,omitempty"`
-	ReviewStatus   string      `json:"review_status,omitempty"`
-	ReviewNote     string      `json:"review_note,omitempty"`
-	Owner          string      `json:"owner,omitempty"`
-	Author         *ToolAuthor `json:"author,omitempty"`
-	APIEnabled     *bool       `json:"api_enabled,omitempty"`
-	ID             string      `json:"id"`
-	Manifest       Manifest    `json:"manifest"`
-	Created        time.Time   `json:"created_at"`
+	StoredBytes       int64       `json:"stored_bytes,omitempty"`
+	ArtifactBytes     int64       `json:"artifact_bytes,omitempty"`
+	DefaultVersion    bool        `json:"default_version,omitempty"`
+	CanaryPercent     int         `json:"canary_percent,omitempty"`
+	Withdrawn         bool        `json:"withdrawn,omitempty"`
+	Playground        bool        `json:"playground,omitempty"`
+	BuildStatus       string      `json:"build_status,omitempty"`
+	BuildLog          string      `json:"build_log,omitempty"`
+	BuildFailureStage string      `json:"build_failure_stage,omitempty"`
+	BuildError        string      `json:"build_error,omitempty"`
+	BuildImage        string      `json:"build_image,omitempty"`
+	Artifact          string      `json:"artifact,omitempty"`
+	Public            *bool       `json:"public,omitempty"`
+	ReviewStatus      string      `json:"review_status,omitempty"`
+	ReviewNote        string      `json:"review_note,omitempty"`
+	Owner             string      `json:"owner,omitempty"`
+	Author            *ToolAuthor `json:"author,omitempty"`
+	APIEnabled        *bool       `json:"api_enabled,omitempty"`
+	ID                string      `json:"id"`
+	Manifest          Manifest    `json:"manifest"`
+	Created           time.Time   `json:"created_at"`
 }
 type ToolAuthor struct {
 	ID            string    `json:"id"`
@@ -103,6 +104,7 @@ type ToolAuthor struct {
 	Created       time.Time `json:"created_at"`
 }
 type Run struct {
+	ToolTitle        string         `json:"tool_title,omitempty"`
 	OutputType       string         `json:"output_type,omitempty"`
 	Events           []StreamEvent  `json:"stream_events,omitempty"`
 	CallbackURL      string         `json:"callback_url,omitempty"`
@@ -452,6 +454,26 @@ func validateInput(s Schema, v any, path string) error {
 		x, ok := v.(string)
 		if !ok {
 			return fail()
+		}
+		if s.Format == "json" {
+			var parsed any
+			if !json.Valid([]byte(x)) {
+				err := json.Unmarshal([]byte(x), &parsed)
+				offset := int64(len(x))
+				if syntax, ok := err.(*json.SyntaxError); ok {
+					offset = syntax.Offset - 1
+				}
+				if offset < 0 {
+					offset = 0
+				}
+				if offset > int64(len(x)) {
+					offset = int64(len(x))
+				}
+				prefix := x[:offset]
+				line := strings.Count(prefix, "\n") + 1
+				column := len([]rune(prefix[strings.LastIndex(prefix, "\n")+1:])) + 1
+				return fmt.Errorf("JSON 格式错误：%s，第 %d 行，第 %d 列：%v。请检查引号、逗号、括号及冒号后的值", path, line, column, err)
+			}
 		}
 		n := len([]rune(x))
 		if s.MinLength != nil && n < *s.MinLength || s.MaxLength != nil && n > *s.MaxLength {

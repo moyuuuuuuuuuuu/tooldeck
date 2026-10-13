@@ -87,6 +87,7 @@ func (s *Server) buildEndpoint(w http.ResponseWriter, r *http.Request, p Princip
 		old := t
 		t.BuildStatus = "queued"
 		t.BuildError = ""
+		t.BuildFailureStage = ""
 		t.BuildLog = ""
 		s.store.State.Tools[id] = t
 		if e := s.store.save(); e != nil {
@@ -138,6 +139,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	dest := filepath.Join(s.store.Root, "artifacts", artifact)
 	job := filepath.Join(s.store.Root, "jobs", artifact)
 	var buildErr error
+	failureStage := "build"
 	var image string
 	logs := &cappedBuffer{Limit: 1 << 20}
 	liveLogs := &buildLogWriter{server: s, toolID: t.ID, buffer: logs, interval: 2 * time.Second}
@@ -161,10 +163,12 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		if buildErr != nil {
 			current.BuildStatus = "failed"
 			current.BuildError = buildErr.Error()
+			current.BuildFailureStage = failureStage
 			_ = os.RemoveAll(dest)
 		} else {
 			current.BuildStatus = "ready"
 			current.BuildError = ""
+			current.BuildFailureStage = ""
 			current.ArtifactBytes = artifactSize
 			current.Artifact = artifact
 			current.BuildImage = image
@@ -185,9 +189,10 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 	case "golang":
 		runtime = "go"
 	}
-	buildRevision := "build5-" + s.store.State.InstanceID
+	buildRevision := "build6-" + s.store.State.InstanceID
 	b, e := exec.CommandContext(ctx, "docker", "image", "inspect", "tooldeck-runtime-"+runtime+":"+t.Manifest.RuntimeVersion+"-"+buildRevision, "--format", "{{.Id}}").Output()
 	if e != nil {
+		failureStage = "environment"
 		version, versionErr := runtimeVersion(t.Manifest)
 		if versionErr != nil {
 			buildErr = versionErr
@@ -200,7 +205,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		case "python":
 			base += "-slim-bookworm"
 		case "php":
-			if version == "8.0" || version == "8.1" {
+			if version == "8.0" {
 				base += "-cli-bullseye"
 			} else {
 				base += "-cli-bookworm"
@@ -217,7 +222,8 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 		prepareErr := prepare.Run()
 		prepareCancel()
 		if prepareErr != nil {
-			buildErr = errors.New("运行环境准备失败，请查看日志后重试")
+			failureStage = "environment"
+			buildErr = errors.New("运行环境准备失败，请重试；若仍失败，请联系管理员并提供环境日志")
 			return
 		}
 		cancel()
@@ -229,6 +235,7 @@ func (s *Server) buildTool(parent context.Context, t Tool) {
 			return
 		}
 	}
+	failureStage = "build"
 	image = strings.TrimSpace(string(b))
 	if e = os.MkdirAll(job, 0755); e != nil {
 		buildErr = e

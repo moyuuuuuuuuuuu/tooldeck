@@ -217,7 +217,7 @@
   import { useUserStore } from '@/store/modules/user'
   const isAdmin = () => useUserStore().info.roles?.includes('R_SUPER')
 
-  import { ref, computed, onMounted } from 'vue'
+  import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   const route = useRoute(),
     router = useRouter()
@@ -228,8 +228,13 @@
   defineOptions({ name: 'Tools' })
   const tools = ref<Tool[]>([]),
     loading = ref(false),
-    search = ref(''),
-    runtime = ref('')
+    search = ref(String(route.query.q || '')),
+    runtime = ref(String(route.query.runtime || ''))
+  watch([search, runtime], () => {
+    void router.replace({
+      query: { ...route.query, q: search.value || undefined, runtime: runtime.value || undefined }
+    })
+  })
   const buildLabels: Record<string, string> = {
     queued: '等待构建',
     building: '正在构建',
@@ -302,13 +307,33 @@
     return Boolean(tool.manifest.env?.length || tool.manifest.secrets?.length)
   }
   function openTool(tool: Tool) {
+    sessionStorage.setItem(
+      'tooldeck-tools-scroll',
+      JSON.stringify({
+        window: window.scrollY,
+        content: document.getElementById('app-main')?.scrollTop || 0
+      })
+    )
     const target = '/tooldeck/run/' + encodeURIComponent(tool.id)
     if (needsLogin(tool) && !useUserStore().isLogin) {
-      loginFor(target)
+      loginFor(
+        router.resolve({
+          path: target,
+          query: { q: search.value || undefined, runtime: runtime.value || undefined }
+        }).fullPath
+      )
       return
     }
-    if (useUserStore().isLogin) router.push(target)
-    else router.push({ path: '/explore', query: { tool: tool.id } })
+    if (useUserStore().isLogin)
+      router.push({
+        path: target,
+        query: { q: search.value || undefined, runtime: runtime.value || undefined }
+      })
+    else
+      router.push({
+        path: '/explore',
+        query: { tool: tool.id, q: search.value || undefined, runtime: runtime.value || undefined }
+      })
   }
   function openUpload() {
     if (!useUserStore().isLogin) {
@@ -454,8 +479,25 @@
       uploadBusy.value = false
     }
   }
+  async function restoreScroll() {
+    await nextTick()
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('tooldeck-tools-scroll') || 'null')
+      if (saved) {
+        window.scrollTo(0, saved.window)
+        document.getElementById('app-main')?.scrollTo(0, saved.content)
+        sessionStorage.removeItem('tooldeck-tools-scroll')
+      }
+    } catch {
+      sessionStorage.removeItem('tooldeck-tools-scroll')
+    }
+  }
+  onActivated(() => {
+    if (tools.value.length) void restoreScroll()
+  })
   onMounted(async () => {
     await load()
+    await restoreScroll()
     if (useUserStore().isLogin && route.query.upload === '1') uploadOpen.value = true
   })
 </script>

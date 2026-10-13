@@ -315,6 +315,16 @@ func (s *Server) Handler() http.Handler {
 			list := []Run{}
 			for _, run := range s.store.State.Runs {
 				if s.canReadRun(p, run) && (r.URL.Query().Get("mine") != "1" || run.Owner == p.owner()) {
+					if filter := r.URL.Query().Get("status"); filter != "" && run.Status != filter {
+						continue
+					}
+					tool := s.store.State.Tools[run.ToolID]
+					if run.ToolTitle == "" {
+						run.ToolTitle = tool.Manifest.Title
+					}
+					if run.ToolTitle == "" {
+						run.ToolTitle = tool.Manifest.Name
+					}
 					list = append(list, run)
 				}
 			}
@@ -811,7 +821,7 @@ func (s *Server) createRunForTransport(w http.ResponseWriter, r *http.Request, p
 		if mcpCall {
 			source = "mcp"
 		}
-		run = Run{ID: ID("run_"), ToolID: id, OutputType: runOutputType(t.Manifest), Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
+		run = Run{ID: ID("run_"), ToolID: id, ToolTitle: t.Manifest.Title, OutputType: runOutputType(t.Manifest), Owner: p.owner(), Status: "queued", Source: source, EnvOverridden: len(b.Env) > 0, Input: b.Input, Artifacts: []File{}, Created: time.Now(), CallbackURL: b.CallbackURL}
 		encryptedEnv := map[string]string{}
 		for name, value := range b.Env {
 			cipher, e := s.encrypt(value)

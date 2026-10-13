@@ -10,12 +10,12 @@ try {
   foreach ($runtime in @('php','node','python','go')) {
     foreach ($version in $matrix[$runtime]) {
       $base = switch ($runtime) {
-        php { if ($version -in @('8.0','8.1')) { "php:${version}-cli-bullseye" } else { "php:${version}-cli-bookworm" } }
+        php { if ($version -in @('8.0')) { "php:${version}-cli-bullseye" } else { "php:${version}-cli-bookworm" } }
         node { "node:${version}-bookworm-slim" }
         python { "python:${version}-slim-bookworm" }
         go { "golang:${version}-bookworm" }
       }
-      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-build5" -f "runtimes/${runtime}.Dockerfile" .
+      docker build --build-arg "BASE_IMAGE=$base" -t "tooldeck-runtime-${runtime}:${version}-build6" -f "runtimes/${runtime}.Dockerfile" .
       if ($LASTEXITCODE -ne 0) { throw "Runtime build failed: ${runtime} ${version}" }
     }
   }

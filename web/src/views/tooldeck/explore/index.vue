@@ -34,7 +34,10 @@
   const route = useRoute(),
     router = useRouter()
   function show(view?: string) {
-    router.push({ path: '/explore', query: view ? { view } : {} })
+    router.push({
+      path: '/explore',
+      query: { q: route.query.q, runtime: route.query.runtime, ...(view ? { view } : {}) }
+    })
   }
   function login(redirect: string) {
     router.push({ path: '/auth/login', query: { redirect } })

@@ -3,7 +3,7 @@
   "name": "url-codec",
   "title": "URL 编码 / 解码",
   "description": "支持 RFC 3986 百分号编码及表单编码。标准模式保留加号，表单模式将加号解码为空格；用于 URL 参数值，不是整条 URL。",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "runtime": "php",
   "runtime_version": "8.1",
   "entrypoint": "main.php",
@@ -44,7 +44,8 @@
         "type": "string",
         "title": "文本 / URL 编码内容",
         "maxLength": 100000,
-        "default": ""
+        "default": "",
+        "minLength": 1
       }
     },
     "required": [

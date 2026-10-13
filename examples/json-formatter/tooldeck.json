@@ -3,7 +3,7 @@
   "name": "json-formatter",
   "title": "JSON 格式化",
   "description": "校验、格式化或压缩 JSON；超大整数保留为字符串，避免精度损失。",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "runtime": "php",
   "runtime_version": "8.1",
   "entrypoint": "main.php",
@@ -35,7 +35,9 @@
         "type": "string",
         "title": "JSON 内容",
         "maxLength": 100000,
-        "default": ""
+        "default": "",
+        "format": "json",
+        "minLength": 1
       }
     },
     "required": [
